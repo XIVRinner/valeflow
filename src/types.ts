@@ -12,6 +12,7 @@ export enum TokenType {
   GOTO    = "GOTO",
   CALL    = "CALL",
   SET     = "SET",
+  CHOICE  = "CHOICE",
   JS      = "JS",
 
   // Literals
@@ -123,6 +124,7 @@ export type Node =
   | GotoNode
   | CallNode
   | SetNode
+  | ChoiceNode
   | BlockNode
   | JsNode;
 
@@ -186,6 +188,17 @@ export interface BlockNode {
   line: number;
 }
 
+export interface ChoiceOptionNode {
+  label: string;
+  body: Node[];
+}
+
+export interface ChoiceNode {
+  type: "choice";
+  options: ChoiceOptionNode[];
+  line: number;
+}
+
 export interface JsNode {
   type: "js";
   code: string;
@@ -242,6 +255,7 @@ export interface Project {
 export type StepResult =
   | { type: "say"; actor: unknown; text: string }
   | { type: "narration"; text: string }
+  | { type: "choice"; options: Array<{ label: string; index: number }> }
   | { type: "end" };
 
 export interface RuntimeContext {

@@ -7,6 +7,11 @@ export interface DialogueStep {
   text: string;
 }
 
+export interface ChoiceOption {
+  label: string;
+  index: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FlowscriptService {
   // Reactive signals consumed by components
@@ -14,6 +19,8 @@ export class FlowscriptService {
   readonly state   = signal<Record<string, unknown>>({});
   readonly done    = signal(false);
   readonly logs    = signal<string[]>([]);
+  /** Non-null while the engine is waiting for a choice to be resolved. */
+  readonly choice  = signal<ChoiceOption[] | null>(null);
 
   private engine: Engine | null = null;
 
@@ -23,6 +30,7 @@ export class FlowscriptService {
     this.logs.set([]);
     this.done.set(false);
     this.state.set({});
+    this.choice.set(null);
 
     const program = compile(source);
     this.engine = new Engine(program);
@@ -39,7 +47,7 @@ export class FlowscriptService {
 
   /** Advance one beat. */
   step(): void {
-    if (!this.engine || this.done()) return;
+    if (!this.engine || this.done() || this.choice()) return;
 
     const result: StepResult = this.engine.next();
 
@@ -60,9 +68,19 @@ export class FlowscriptService {
         ...s,
         { kind: 'narration', text: result.text },
       ]);
+    } else if (result.type === 'choice') {
+      this.choice.set(result.options);
     }
 
     this.refreshState();
+  }
+
+  /** Resolve a pending choice and immediately continue to the next beat. */
+  choose(index: number): void {
+    if (!this.engine || !this.choice()) return;
+    this.engine.choose(index);
+    this.choice.set(null);
+    this.step();
   }
 
   private refreshState(): void {
@@ -77,6 +95,7 @@ export class FlowscriptService {
     this.logs.set([]);
     this.done.set(false);
     this.state.set({});
+    this.choice.set(null);
     this.engine = null;
   }
 

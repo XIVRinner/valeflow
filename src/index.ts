@@ -36,6 +36,22 @@ export type { LoadInput }               from "./project/index.js";
 // ── Runtime ───────────────────────────────────────────────
 export { Engine }                       from "./runtime/index.js";
 
+// ── Serializer ────────────────────────────────────────────
+export { serializeTree }                from "./serialize/index.js";
+export type {
+  SerializedProgram,
+  SerializedChapter,
+  SerializedNode,
+  SerializedDecl,
+  SerializedSay,
+  SerializedNarration,
+  SerializedIf,
+  SerializedChoice,
+  SerializedGoto,
+  SerializedCall,
+  SerializedSet,
+}                                       from "./serialize/index.js";
+
 // ── Value exports from types (enums etc.) ─────────────────
 export { TokenType }                    from "./types.js";
 
@@ -59,6 +75,8 @@ export type {
   GotoNode,
   CallNode,
   SetNode,
+  ChoiceNode,
+  ChoiceOptionNode,
   BlockNode,
   JsNode,
   LabelRef,

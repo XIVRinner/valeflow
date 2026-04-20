@@ -1,12 +1,13 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { DialogueRunnerComponent } from './dialogue-runner/dialogue-runner.component';
 import { StateViewerComponent } from './state-viewer/state-viewer.component';
+import { TreeViewerComponent } from './tree-viewer/tree-viewer.component';
 import { DEMO_SCRIPTS, DemoScript, EXPERIMENT_SCRIPT, EXPERIMENT_STARTER } from './scripts';
 import { FlowscriptService } from './flowscript.service';
 
 @Component({
   selector: 'app-root',
-  imports: [DialogueRunnerComponent, StateViewerComponent],
+  imports: [DialogueRunnerComponent, StateViewerComponent, TreeViewerComponent],
   template: `
     <div class="shell">
       <!-- ── Header ───────────────────────────────────────── -->
@@ -23,6 +24,7 @@ import { FlowscriptService } from './flowscript.service';
               class="tab"
               [class.active]="activeScript?.id === s.id"
               [class.tab-playground]="s.id === 'experiment'"
+              [class.tab-tree]="s.id === 'tree'"
               (click)="select(s)"
             >
               {{ s.title }}
@@ -61,10 +63,15 @@ import { FlowscriptService } from './flowscript.service';
           }
         </aside>
 
-        <!-- Middle: dialogue runner -->
+        <!-- Middle: dialogue runner OR tree viewer -->
         <section class="dialogue-panel">
-          <div class="panel-label">Dialogue</div>
-          <app-dialogue-runner />
+          @if (isTree) {
+            <div class="panel-label">AST Tree</div>
+            <app-tree-viewer [source]="activeScript?.source ?? ''" />
+          } @else {
+            <div class="panel-label">Dialogue</div>
+            <app-dialogue-runner />
+          }
         </section>
 
         <!-- Right: state viewer -->
@@ -228,6 +235,20 @@ import { FlowscriptService } from './flowscript.service';
       color: #000;
     }
 
+    /* ── Tree tab ─────────────────────────────────── */
+
+    .tab-tree {
+      border-color: #1e3a5f;
+      color: #7ecfff;
+    }
+
+    .tab-tree:hover { color: #a8dcff; border-color: #7ecfff; }
+    .tab-tree.active {
+      background: #7ecfff;
+      border-color: #7ecfff;
+      color: #000;
+    }
+
     /* ── Source editor (playground) ───────────────── */
 
     .source-editor {
@@ -280,6 +301,10 @@ export class App implements OnInit {
     return this.activeScript?.id === 'experiment';
   }
 
+  protected get isTree(): boolean {
+    return this.activeScript?.id === 'tree';
+  }
+
   ngOnInit(): void {
     this.select(this.scripts[0]);
   }
@@ -287,7 +312,7 @@ export class App implements OnInit {
   select(script: DemoScript): void {
     this.activeScript = script;
     this.compileError.set(null);
-    if (script.id === 'experiment') {
+    if (script.id === 'experiment' || script.id === 'tree') {
       this.svc.clear();
     } else {
       this.svc.load(script.source);

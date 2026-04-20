@@ -9,6 +9,7 @@ const KEYWORDS: Record<string, TokenType> = {
   goto    : TokenType.GOTO,
   call    : TokenType.CALL,
   set     : TokenType.SET,
+  choice  : TokenType.CHOICE,
   js      : TokenType.JS,
   true    : TokenType.BOOLEAN,
   false   : TokenType.BOOLEAN,

@@ -1,6 +1,7 @@
 import {
   Program, Node, Expression,
   Project,
+  ChoiceOptionNode,
   StepResult, FunctionHook, RuntimeContext,
 } from "../types.js";
 import { tokenize } from "../lexer/index.js";
@@ -46,6 +47,15 @@ export class Engine {
   /** Becomes true after `initGlobals()` runs — prevents double-evaluation. */
   private initialized = false;
 
+  /**
+   * Non-null while waiting for the caller to invoke `choose()`.
+   * `next()` returns the same choice step until resolved.
+   */
+  private pendingChoice: {
+    result: { type: "choice"; options: Array<{ label: string; index: number }> };
+    bodies: Node[][];
+  } | null = null;
+
   // ──────────────────────────────────────────────────────────
 
   constructor(input: Program | Project) {
@@ -77,9 +87,33 @@ export class Engine {
   }
 
   /**
+   * Resolve a pending choice. Must be called after `next()` returns a
+   * `{ type: "choice" }` result before calling `next()` again.
+   *
+   * @param index  Zero-based index into the presented options array.
+   */
+  choose(index: number): void {
+    if (!this.pendingChoice) {
+      throw new Error("Engine.choose(): no pending choice to resolve");
+    }
+    const bodies = this.pendingChoice.bodies;
+    if (index < 0 || index >= bodies.length) {
+      throw new Error(
+        `Engine.choose(): index ${index} is out of range (0-${bodies.length - 1})`
+      );
+    }
+    const body = bodies[index];
+    this.pendingChoice = null;
+    this.stack.push({ nodes: body, index: 0 });
+  }
+
+  /**
    * Advance execution by one visible beat.
-   * Returns `{ type: "say" | "narration" | "end" }`.
+   * Returns `{ type: "say" | "narration" | "choice" | "end" }`.
    * Silent nodes (declare, set, if, goto, call, block) are consumed internally.
+   *
+   * If a `choice` result is returned, call `choose(index)` before calling
+   * `next()` again — until then `next()` continues to return the same choice.
    *
    * Global declarations are evaluated lazily on the first call, so all
    * `registerFunction` calls must happen before the first `next()`.
@@ -89,6 +123,9 @@ export class Engine {
       this.initGlobals();
       this.initialized = true;
     }
+
+    // Block until the caller resolves the pending choice
+    if (this.pendingChoice) return this.pendingChoice.result;
 
     while (true) {
       if (this.stack.length === 0) return { type: "end" };
@@ -230,6 +267,15 @@ export class Engine {
         // are pushed inline (not jumped to).
         this.stack.push({ nodes: node.body, index: 0 });
         return null;
+
+      case "choice": {
+        const result = {
+          type: "choice" as const,
+          options: node.options.map((o, i) => ({ label: o.label, index: i })),
+        };
+        this.pendingChoice = { result, bodies: node.options.map(o => o.body) };
+        return result;
+      }
 
       case "js":
         // js: blocks are stubbed — no execution

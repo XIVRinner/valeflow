@@ -196,6 +196,94 @@ chapter WRONG:
     call log("riddle: wrong")
 `.trim(),
   },
+
+  // ── Choice system demo ─────────────────────────────────────────
+
+  {
+    id: 'choices',
+    title: '⬡ Choices',
+    description: 'Interactive branching with the choice: syntax. Pick an option to steer the story.',
+    source: `
+declare hero   = Actor("Theron")
+declare ending = "none"
+
+chapter START:
+    hero "The path splits before you."
+    "You stand at a crossroads in the Whispering Wood."
+    choice:
+        -> "Take the forest path":
+            "The trees close in. Ancient silence wraps around you."
+            hero "It feels old here. Very old."
+            set ending = "forest"
+            goto FOREST
+        -> "Head toward the village":
+            hero "I could use some food."
+            "The smell of fresh bread drifts on the breeze."
+            set ending = "town"
+            goto TOWN
+        -> "Rest here a moment":
+            "You sit on a mossy stone."
+            hero "No rush. The road will wait."
+            goto START
+
+chapter FOREST:
+    hero "Something watches from the shadows."
+    "You find a carved stone marker — older than any map."
+    choice:
+        -> "Inspect the marker":
+            "The inscription reads: 'Turn back, wanderer.'"
+            hero "Maybe I should listen."
+        -> "Press deeper into the forest":
+            hero "I didn't come this far to stop now."
+            "The trees thin. Ruins emerge from the fog."
+    "Your ending: \${ending}."
+
+chapter TOWN:
+    "The village of Millhaven comes into view."
+    hero "A warm fire would be welcome."
+    "The innkeeper nods as you push open the door."
+    choice:
+        -> "Ask for a room":
+            "The innkeeper hands you a key."
+            hero "Perfect."
+        -> "Just ask about the road ahead":
+            hero "What lies east of here?"
+            "She shrugs. 'Ruins. And worse.'"
+    "Your ending: \${ending}."
+`.trim(),
+  },
+
+  // ── Tree viewer ────────────────────────────────────────────────
+
+  {
+    id: 'tree',
+    title: '⊞ Tree View',
+    description: 'Inspect the full AST as structured JSON. Switch any demo tab then return here.',
+    source: `
+declare hero = Actor("Lyra")
+declare score = 0
+
+chapter START:
+    hero "Let the inspection begin!"
+    set score = score + 10
+    if score >= 10:
+        hero "Score threshold met."
+    else:
+        hero "Not enough."
+    choice:
+        -> "Branch A":
+            "You took branch A."
+            set score = score + 5
+        -> "Branch B":
+            "You took branch B."
+    hero "Final score: \${score}"
+    goto EPILOGUE
+
+chapter EPILOGUE:
+    "The curtain falls."
+    hero "That is all."
+`.trim(),
+  },
 ];
 
 // ── Experiment / Playground ─────────────────────────────────────

@@ -2,6 +2,7 @@ import {
   Token, TokenType,
   Program, Node, Expression,
   IfBranch,
+  ChoiceOptionNode,
   LiteralExpression, IdentifierExpression,
   BinaryExpression, UnaryExpression,
   CallExpression, MemberExpression,
@@ -250,6 +251,7 @@ class Parser {
       case TokenType.GOTO:     return this.parseGoto();
       case TokenType.CALL:     return this.parseCall();
       case TokenType.SET:      return this.parseSet();
+      case TokenType.CHOICE:   return this.parseChoice();
       case TokenType.JS:       return this.parseJs();
       case TokenType.STRING:   return this.parseNarration();
       case TokenType.IDENTIFIER: return this.parseSayOrSkip();
@@ -386,6 +388,58 @@ class Parser {
     }
 
     return { type: "js", code: rawParts.join(" "), line };
+  }
+
+  private parseChoice(): Node {
+    const line = this.peek().line;
+    this.advance(); // CHOICE
+    this.expect(TokenType.COLON);
+    if (this.check(TokenType.NEWLINE)) this.advance();
+
+    const options: ChoiceOptionNode[] = [];
+
+    // Expect an INDENT block; each option is one of:
+    //   Full:      -> "label": <block>
+    //   Shorthand: "label" -> TARGET   (body is implicitly `goto TARGET`)
+    this.expect(TokenType.INDENT);
+    while (!this.check(TokenType.DEDENT) && !this.check(TokenType.EOF)) {
+      this.skipNewlines();
+      if (this.check(TokenType.DEDENT) || this.check(TokenType.EOF)) break;
+
+      if (this.check(TokenType.ARROW)) {
+        // ── Full body syntax: -> "label": <block> ─────────────
+        this.advance(); // consume ->
+        const label = this.expect(TokenType.STRING).value;
+        this.expect(TokenType.COLON);
+        if (this.check(TokenType.NEWLINE)) this.advance();
+        const body = this.block();
+        options.push({ label, body });
+
+      } else if (this.check(TokenType.STRING)) {
+        // ── Shorthand syntax: "label" -> TARGET ───────────────
+        const labelTok = this.advance();       // STRING
+        this.expect(TokenType.ARROW);
+        // Target may be dotted (file.flow) and/or cross-file (::LABEL)
+        let target = this.expect(TokenType.IDENTIFIER).value;
+        while (this.check(TokenType.DOT)) {
+          this.advance();
+          target += "." + this.expect(TokenType.IDENTIFIER).value;
+        }
+        if (this.check(TokenType.COLONCOLON)) {
+          this.advance();
+          target += "::" + this.expect(TokenType.IDENTIFIER).value;
+        }
+        if (this.check(TokenType.NEWLINE)) this.advance();
+        const gotoNode: Node = { type: "goto", target, line: labelTok.line };
+        options.push({ label: labelTok.value, body: [gotoNode] });
+
+      } else {
+        this.advance(); // skip unknown token
+      }
+    }
+    if (this.check(TokenType.DEDENT)) this.advance();
+
+    return { type: "choice", options, line };
   }
 
   private parseNarration(): Node {

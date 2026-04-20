@@ -25,20 +25,32 @@ import { FlowscriptService } from '../flowscript.service';
           <div class="end-marker">— end of script —</div>
         }
 
-        @if (svc.steps().length === 0 && !svc.done()) {
+        @if (svc.steps().length === 0 && !svc.done() && !svc.choice()) {
           <div class="placeholder">Press <strong>Next</strong> to start the dialogue.</div>
         }
       </div>
 
-      <div class="controls">
-        <button
-          class="btn-next"
-          (click)="svc.step()"
-          [disabled]="svc.done()"
-        >
-          {{ svc.done() ? 'Done' : 'Next ▶' }}
-        </button>
-      </div>
+      <!-- Choice buttons (shown instead of Next when waiting for a pick) -->
+      @if (svc.choice(); as options) {
+        <div class="choice-panel">
+          <div class="choice-label">Choose a path:</div>
+          @for (opt of options; track opt.index) {
+            <button class="btn-choice" (click)="svc.choose(opt.index)">
+              → {{ opt.label }}
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="controls">
+          <button
+            class="btn-next"
+            (click)="svc.step()"
+            [disabled]="svc.done()"
+          >
+            {{ svc.done() ? 'Done' : 'Next ▶' }}
+          </button>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -143,6 +155,44 @@ import { FlowscriptService } from '../flowscript.service';
 
     .btn-next:not(:disabled):hover {
       opacity: .85;
+    }
+
+    /* ── Choice panel ─────────────────────────── */
+
+    .choice-panel {
+      padding: .75rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+    }
+
+    .choice-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .2rem;
+    }
+
+    .btn-choice {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: .5rem .85rem;
+      font-size: .88rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      animation: fade-in .15s ease;
+    }
+
+    .btn-choice:hover {
+      border-color: var(--accent);
+      background: var(--surface);
+      color: var(--accent);
     }
 
     @keyframes fade-in {
