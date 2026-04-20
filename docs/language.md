@@ -128,8 +128,9 @@ hero "I've taken ${steps + 1} steps so far."
 ```
 
 - The expression inside `${…}` is evaluated in the current variable state.
-- Member access (`hero.name`) works on any object value.
-- Arithmetic and comparisons are valid inside interpolations.
+- Member access (`hero.name`) reads only own data properties; prototype and constructor lookups are blocked.
+- Arithmetic is type-aware: numeric operators require numbers, while `+` also concatenates strings.
+- Invalid or unsafe expression operations resolve to `null`, which renders as an empty interpolation result.
 
 ---
 
@@ -158,6 +159,36 @@ else:
 - `elseif` and `else` are optional.
 - Conditions are full [expressions](#expressions).
 - Bodies are indented and may contain any statement, including nested `if`.
+
+---
+
+## Choices
+
+Interactive branching. Each option can jump directly to a chapter or run a full indented body before continuing.
+
+Shorthand options are the most compact form:
+
+```
+choice:
+    "Go to the forest" -> FOREST
+    "Visit the shop"   -> SHOP
+```
+
+Full-body options let you run any nodes before leaving the choice branch:
+
+```
+choice:
+    -> "Train" if gold >= 3:
+        hero "We should prepare first."
+        goto TRAINING
+    -> "Rest":
+        "You decide to wait until morning."
+```
+
+- `choice:` pauses execution until the host resolves the selection with `engine.choose(index)`.
+- Add `if <condition>` after a choice label to show it only when the condition is truthy.
+- `choice` bodies can contain any valid statement.
+- Choice labels are returned to the host as visible options, in source order.
 
 ---
 
@@ -197,6 +228,18 @@ call setFlag("metQueen", true)
 - If the named function is not registered, the `call` is silently ignored.
 - Register functions with `engine.registerFunction(name, fn)`.
 - `call` is a **statement** — its return value is discarded. Use a [call expression](#call-expression) inside a `declare` or `set` to capture a return value.
+
+Example with a reusable subroutine:
+
+```
+chapter START:
+    call INTRO
+    "Back in the main scene."
+
+chapter INTRO:
+    hero "I will be right back."
+    return
+```
 
 ---
 
@@ -247,6 +290,8 @@ actor1.name
 
 Chains are supported: `a.b.c`
 
+- Only own properties are readable; prototype-chain lookups such as `constructor` and `__proto__` are blocked.
+
 ### Call Expression
 
 Call a registered hook and use its return value.
@@ -271,6 +316,10 @@ This is distinct from the `call` *statement* — here the return value is captur
 set coins = coins + 10
 set half  = total / 2
 ```
+
+- `+` concatenates if either side is a string.
+- `-`, `*`, and `/` require finite numbers.
+- Invalid arithmetic yields `null` rather than relying on JavaScript coercion.
 
 ### Comparison
 

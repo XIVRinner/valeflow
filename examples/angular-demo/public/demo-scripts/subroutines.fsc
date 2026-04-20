@@ -1,0 +1,17 @@
+declare hero = Actor("Lyra")
+declare visits = 0
+
+chapter START:
+    hero "We should check the plan before we move on."
+    call BRIEFING
+    "Back in the main scene after the briefing."
+    if visits < 2:
+        goto START
+    else:
+        "The checklist is complete."
+
+chapter BRIEFING:
+    set visits = visits + 1
+    "Briefing run ${visits}: review the map, confirm supplies, and watch the exits."
+    hero "Ready."
+    return

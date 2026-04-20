@@ -108,6 +108,7 @@ Advance execution by one **visible** beat. Silent nodes (`declare`, `set`, `if`,
 type StepResult =
   | { type: "say";       actor: unknown; text: string }
   | { type: "narration"; text: string }
+  | { type: "choice";    options: { label: string; index: number }[] }
   | { type: "end" };
 ```
 
@@ -129,6 +130,15 @@ if (step.type === "narration") {
 }
 ```
 
+**`choice`** — the engine is waiting for a player decision.
+
+```ts
+if (step.type === "choice") {
+  console.log(step.options);
+  engine.choose(0);
+}
+```
+
 **`end`** — execution has finished (stack is empty). Calling `next()` after `end` continues to return `end`.
 
 ---
@@ -141,6 +151,40 @@ Returns a shallow snapshot of all current variable values.
 const state = engine.getState();
 console.log(state.coins); // 12
 console.log(state.hero);  // { name: "Lyra" }
+```
+
+---
+
+### `engine.saveState(): EngineSnapshot`
+
+Captures the current runtime state, including the active file, execution stack, call stack, variables, initialization flag, and any pending choice.
+
+```ts
+const snapshot = engine.saveState();
+```
+
+### `engine.loadState(snapshot: EngineSnapshot): this`
+
+Restores a snapshot previously produced by `engine.saveState()`.
+
+```ts
+engine.loadState(snapshot);
+```
+
+The snapshot is meant for the same compiled project. If the stored current file does not exist in the target engine's project, loading throws.
+
+### Choice handling
+
+Choices stay pending until the host resolves them with `engine.choose(index)`.
+
+```ts
+let step = engine.next();
+
+if (step.type === "choice") {
+  renderChoices(step.options);
+  engine.choose(step.options[0].index);
+  step = engine.next();
+}
 ```
 
 ---

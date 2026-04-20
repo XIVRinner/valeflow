@@ -28,6 +28,7 @@ export type SerializedNode =
   | SerializedChoice
   | SerializedGoto
   | SerializedCall
+  | SerializedReturn
   | SerializedSet
   | SerializedDecl & { type: "declare" };
 
@@ -35,6 +36,7 @@ export interface SerializedSay       { type: "say";      actor: string; text: st
 export interface SerializedNarration { type: "narration"; text: string }
 export interface SerializedGoto      { type: "goto";     target: string }
 export interface SerializedCall      { type: "call";     name: string; args: string[] }
+export interface SerializedReturn    { type: "return" }
 export interface SerializedSet       { type: "set";      name: string; value: string }
 export interface SerializedIf {
   type: "if";
@@ -42,7 +44,7 @@ export interface SerializedIf {
 }
 export interface SerializedChoice {
   type: "choice";
-  options: Array<{ label: string; nodes: SerializedNode[] }>;
+  options: Array<{ label: string; condition: string | null; nodes: SerializedNode[] }>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -120,6 +122,7 @@ function serializeNodes(nodes: Node[]): SerializedNode[] {
           type: "choice",
           options: node.options.map(o => ({
             label: o.label,
+            condition: o.condition ? exprToString(o.condition) : null,
             nodes: serializeNodes(o.body),
           })),
         });
@@ -135,6 +138,10 @@ function serializeNodes(nodes: Node[]): SerializedNode[] {
           name: node.name,
           args: node.args.map(exprToString),
         });
+        break;
+
+      case "return":
+        out.push({ type: "return" });
         break;
 
       case "set":

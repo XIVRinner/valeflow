@@ -49,6 +49,7 @@ export type {
   SerializedChoice,
   SerializedGoto,
   SerializedCall,
+  SerializedReturn,
   SerializedSet,
 }                                       from "./serialize/index.js";
 
@@ -74,6 +75,7 @@ export type {
   IfBranch,
   GotoNode,
   CallNode,
+  ReturnNode,
   SetNode,
   ChoiceNode,
   ChoiceOptionNode,
@@ -85,6 +87,10 @@ export type {
   StepResult,
   FunctionHook,
   RuntimeContext,
+  EngineSnapshot,
+  EngineFrameSnapshot,
+  EngineCallFrameSnapshot,
+  EngineChoiceSnapshot,
 } from "./types.js";
 
 // ── Convenience facade ────────────────────────────────────

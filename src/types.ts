@@ -11,6 +11,7 @@ export enum TokenType {
   ELSE    = "ELSE",
   GOTO    = "GOTO",
   CALL    = "CALL",
+  RETURN  = "RETURN",
   SET     = "SET",
   CHOICE  = "CHOICE",
   JS      = "JS",
@@ -123,6 +124,7 @@ export type Node =
   | IfNode
   | GotoNode
   | CallNode
+  | ReturnNode
   | SetNode
   | ChoiceNode
   | BlockNode
@@ -174,6 +176,11 @@ export interface CallNode {
   line: number;
 }
 
+export interface ReturnNode {
+  type: "return";
+  line: number;
+}
+
 export interface SetNode {
   type: "set";
   name: string;
@@ -190,6 +197,7 @@ export interface BlockNode {
 
 export interface ChoiceOptionNode {
   label: string;
+  condition: Expression | null;
   body: Node[];
 }
 
@@ -257,6 +265,31 @@ export type StepResult =
   | { type: "narration"; text: string }
   | { type: "choice"; options: Array<{ label: string; index: number }> }
   | { type: "end" };
+
+export interface EngineFrameSnapshot {
+  nodes: Node[];
+  index: number;
+}
+
+export interface EngineCallFrameSnapshot {
+  file: string;
+  stack: EngineFrameSnapshot[];
+}
+
+export interface EngineChoiceSnapshot {
+  result: { type: "choice"; options: Array<{ label: string; index: number }> };
+  bodies: Node[][];
+}
+
+export interface EngineSnapshot {
+  currentFile: string;
+  stack: EngineFrameSnapshot[];
+  callStack: EngineCallFrameSnapshot[];
+  globals: Record<string, unknown>;
+  state: Record<string, unknown>;
+  initialized: boolean;
+  pendingChoice: EngineChoiceSnapshot | null;
+}
 
 export interface RuntimeContext {
   getVar: (name: string) => unknown;

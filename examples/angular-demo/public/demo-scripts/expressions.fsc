@@ -1,0 +1,13 @@
+declare hero = Actor("Lyra")
+declare title = hero.name + " the Brave"
+declare blocked = "Prototype lookup => " + hero.constructor
+
+chapter START:
+    hero "${title}"
+    "${blocked}"
+    choice:
+        "Continue" if title == "Lyra the Brave" -> END
+        "Quit" -> END
+
+chapter END:
+    "The expression demo is complete."

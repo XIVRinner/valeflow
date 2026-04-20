@@ -1,6 +1,6 @@
 {
   "name": "@rinner/valeflow",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "A TypeScript-first dialogue scripting engine and DSL for branching narratives, featuring a step-based runtime, scoped variables, and extensible hooks.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -38,7 +38,9 @@
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly --outDir dist",
     "dev": "tsup --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "pretest": "npm run build",
+    "test": "node test/run.mjs"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

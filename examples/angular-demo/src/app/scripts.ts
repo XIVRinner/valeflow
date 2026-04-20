@@ -27,6 +27,13 @@ export const DEMO_SCRIPTS: DemoScript[] = [
     source: '',
   },
   {
+    id: 'expressions',
+    title: 'Improved Expressions',
+    description: 'String concatenation, safe member access, and a conditional branch.',
+    assetPath: 'demo-scripts/expressions.fsc',
+    source: '',
+  },
+  {
     id: 'branching',
     title: 'if / elseif / else',
     description: 'Condition chains and nested branching.',
@@ -38,6 +45,13 @@ export const DEMO_SCRIPTS: DemoScript[] = [
     title: 'Function Calls',
     description: 'call statement with registered engine hooks.',
     assetPath: 'demo-scripts/functions.fsc',
+    source: '',
+  },
+  {
+    id: 'subroutines',
+    title: 'Subroutines',
+    description: 'call a chapter as a reusable subroutine and return to the caller.',
+    assetPath: 'demo-scripts/subroutines.fsc',
     source: '',
   },
   {
@@ -64,7 +78,7 @@ export const DEMO_SCRIPTS: DemoScript[] = [
   {
     id: 'choices',
     title: '⬡ Choices',
-    description: 'Interactive branching with the choice: syntax. Pick an option to steer the story.',
+    description: 'Interactive branching with the choice: syntax, including a conditional option.',
     assetPath: 'demo-scripts/choices.fsc',
     source: '',
   },

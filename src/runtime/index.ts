@@ -2,7 +2,9 @@ import {
   Program, Node, Expression,
   Project,
   ChoiceOptionNode,
+  LabelRef,
   StepResult, FunctionHook, RuntimeContext,
+  EngineSnapshot,
 } from "../types.js";
 import { tokenize } from "../lexer/index.js";
 import { parseExpressionTokens } from "../parser/index.js";
@@ -17,6 +19,11 @@ interface Frame {
   index: number;
 }
 
+interface CallFrame {
+  file: string;
+  stack: Frame[];
+}
+
 // ─────────────────────────────────────────────────────────────
 // Engine
 // ─────────────────────────────────────────────────────────────
@@ -29,6 +36,9 @@ export class Engine {
 
   /** Execution frame stack. */
   private stack: Frame[] = [];
+
+  /** Saved continuations for subroutine-style `call` / `return`. */
+  private callStack: CallFrame[] = [];
 
   /**
    * Global variable store — shared across all files.
@@ -154,6 +164,58 @@ export class Engine {
     return result;
   }
 
+  /**
+   * Capture the current execution state so it can be restored later.
+   */
+  saveState(): EngineSnapshot {
+    return {
+      currentFile: this.currentFile,
+      stack: this.cloneFrames(this.stack),
+      callStack: this.callStack.map(frame => ({
+        file: frame.file,
+        stack: this.cloneFrames(frame.stack),
+      })),
+      globals: this.cloneRecord(this.globals),
+      state: this.cloneRecord(this.state),
+      initialized: this.initialized,
+      pendingChoice: this.pendingChoice ? {
+        result: {
+          type: "choice",
+          options: this.pendingChoice.result.options.map(option => ({ ...option })),
+        },
+        bodies: this.pendingChoice.bodies.map(body => body.slice()),
+      } : null,
+    };
+  }
+
+  /**
+   * Restore a snapshot produced by `saveState()`.
+   */
+  loadState(snapshot: EngineSnapshot): this {
+    if (!this.project.files[snapshot.currentFile]) {
+      throw new Error(`Engine.loadState(): unknown file "${snapshot.currentFile}"`);
+    }
+
+    this.currentFile = snapshot.currentFile;
+    this.stack = this.cloneFrames(snapshot.stack);
+    this.callStack = snapshot.callStack.map(frame => ({
+      file: frame.file,
+      stack: this.cloneFrames(frame.stack),
+    }));
+    this.globals = this.cloneMap(snapshot.globals);
+    this.state = this.cloneMap(snapshot.state);
+    this.initialized = snapshot.initialized;
+    this.pendingChoice = snapshot.pendingChoice ? {
+      result: {
+        type: "choice",
+        options: snapshot.pendingChoice.result.options.map(option => ({ ...option })),
+      },
+      bodies: snapshot.pendingChoice.bodies.map(body => body.slice()),
+    } : null;
+
+    return this;
+  }
+
   /** Name of the file currently being executed. */
   getCurrentFile(): string {
     return this.currentFile;
@@ -250,15 +312,40 @@ export class Engine {
         // Jump: clear the call stack and enter the target chapter
         this.currentFile = ref.file;
         this.stack = [{ nodes: ref.chapter.body, index: 0 }];
+        this.callStack = [];
         return null;
       }
 
       case "call": {
+        if (node.args.length === 0) {
+          const ref = this.tryResolveLabel(node.name, node.line);
+          if (ref) {
+            this.callStack.push({
+              file: this.currentFile,
+              stack: this.cloneFrames(this.stack),
+            });
+            this.currentFile = ref.file;
+            this.stack = [{ nodes: ref.chapter.body, index: 0 }];
+            return null;
+          }
+        }
+
         const fn = this.hooks.get(node.name);
         if (fn) {
           const args = node.args.map(a => this.evalExpr(a));
           fn(this.makeContext(), ...args);
         }
+        return null;
+      }
+
+      case "return": {
+        const frame = this.callStack.pop();
+        if (!frame) {
+          this.stack = [];
+          return null;
+        }
+        this.currentFile = frame.file;
+        this.stack = frame.stack;
         return null;
       }
 
@@ -269,11 +356,19 @@ export class Engine {
         return null;
 
       case "choice": {
+        const visibleOptions = node.options.filter(option => {
+          return option.condition === null || Boolean(this.evalExpr(option.condition));
+        });
+
+        if (visibleOptions.length === 0) {
+          throw new Error(`Choice at line ${node.line} has no visible options`);
+        }
+
         const result = {
           type: "choice" as const,
-          options: node.options.map((o, i) => ({ label: o.label, index: i })),
+          options: visibleOptions.map((o, i) => ({ label: o.label, index: i })),
         };
-        this.pendingChoice = { result, bodies: node.options.map(o => o.body) };
+        this.pendingChoice = { result, bodies: visibleOptions.map(o => o.body) };
         return result;
       }
 
@@ -287,6 +382,86 @@ export class Engine {
   }
 
   // ── expression evaluator ─────────────────────────────────
+
+  private isSafePropertyName(property: string): boolean {
+    return property !== "__proto__" && property !== "prototype" && property !== "constructor";
+  }
+
+  private isFiniteNumber(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  private readMember(object: unknown, property: string): unknown {
+    if (object == null) return null;
+    if (typeof object !== "object" && typeof object !== "function") return null;
+    if (!this.isSafePropertyName(property)) return null;
+    if (!Object.prototype.hasOwnProperty.call(object, property)) return null;
+
+    const value = (object as Record<string, unknown>)[property];
+    return value === undefined ? null : value;
+  }
+
+  private applyUnary(operator: string, operand: unknown): unknown {
+    switch (operator) {
+      case "!":
+        return !operand;
+      case "-":
+        return this.isFiniteNumber(operand) ? -operand : null;
+      default:
+        return null;
+    }
+  }
+
+  private applyBinary(operator: string, left: unknown, right: unknown): unknown {
+    switch (operator) {
+      case "+":
+        if (typeof left === "string" || typeof right === "string") {
+          return String(left) + String(right);
+        }
+        if (this.isFiniteNumber(left) && this.isFiniteNumber(right)) {
+          return left + right;
+        }
+        return null;
+
+      case "-":
+        return this.isFiniteNumber(left) && this.isFiniteNumber(right) ? left - right : null;
+
+      case "*":
+        return this.isFiniteNumber(left) && this.isFiniteNumber(right) ? left * right : null;
+
+      case "/":
+        return this.isFiniteNumber(left) && this.isFiniteNumber(right) ? left / right : null;
+
+      case "==":
+        return left === right;
+
+      case "!=":
+        return left !== right;
+
+      case ">":
+        if (this.isFiniteNumber(left) && this.isFiniteNumber(right)) return left > right;
+        if (typeof left === "string" && typeof right === "string") return left > right;
+        return null;
+
+      case "<":
+        if (this.isFiniteNumber(left) && this.isFiniteNumber(right)) return left < right;
+        if (typeof left === "string" && typeof right === "string") return left < right;
+        return null;
+
+      case ">=":
+        if (this.isFiniteNumber(left) && this.isFiniteNumber(right)) return left >= right;
+        if (typeof left === "string" && typeof right === "string") return left >= right;
+        return null;
+
+      case "<=":
+        if (this.isFiniteNumber(left) && this.isFiniteNumber(right)) return left <= right;
+        if (typeof left === "string" && typeof right === "string") return left <= right;
+        return null;
+
+      default:
+        return null;
+    }
+  }
 
   private evalExpr(expr: Expression): unknown {
     switch (expr.type) {
@@ -306,29 +481,15 @@ export class Engine {
           return this.evalExpr(expr.left) || this.evalExpr(expr.right);
         }
 
-        const l = this.evalExpr(expr.left);
-        const r = this.evalExpr(expr.right);
-
-        switch (expr.operator) {
-          case "+" : return (l as number) +  (r as number);
-          case "-" : return (l as number) -  (r as number);
-          case "*" : return (l as number) *  (r as number);
-          case "/" : return (l as number) /  (r as number);
-          case "==": return l === r;
-          case "!=": return l !== r;
-          case ">" : return (l as number) >  (r as number);
-          case "<" : return (l as number) <  (r as number);
-          case ">=": return (l as number) >= (r as number);
-          case "<=": return (l as number) <= (r as number);
-        }
-        break;
+        return this.applyBinary(
+          expr.operator,
+          this.evalExpr(expr.left),
+          this.evalExpr(expr.right)
+        );
       }
 
       case "unary": {
-        const v = this.evalExpr(expr.operand);
-        if (expr.operator === "!")  return !v;
-        if (expr.operator === "-")  return -(v as number);
-        break;
+        return this.applyUnary(expr.operator, this.evalExpr(expr.operand));
       }
 
       case "call_expr": {
@@ -339,9 +500,7 @@ export class Engine {
       }
 
       case "member": {
-        const obj = this.evalExpr(expr.object);
-        if (obj == null || typeof obj !== "object") return null;
-        return (obj as Record<string, unknown>)[expr.property] ?? null;
+        return this.readMember(this.evalExpr(expr.object), expr.property);
       }
     }
     return null;
@@ -371,6 +530,33 @@ export class Engine {
       getVar: (name) => this.getVar(name),
       setVar: (name, value) => this.setVar(name, value),
     };
+  }
+
+  private cloneFrames(frames: Frame[]): Frame[] {
+    return frames.map(frame => ({
+      nodes: frame.nodes,
+      index: frame.index,
+    }));
+  }
+
+  private cloneMap(values: Record<string, unknown>): Map<string, unknown> {
+    return new Map(Object.entries(values));
+  }
+
+  private cloneRecord(values: Map<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of values) {
+      result[key] = value;
+    }
+    return result;
+  }
+
+  private tryResolveLabel(target: string, line: number): LabelRef | null {
+    try {
+      return resolveLabel(this.project, this.currentFile, target, line);
+    } catch {
+      return null;
+    }
   }
 }
 

@@ -171,13 +171,43 @@ This means the caller always receives exactly one visible event per `next()` cal
 | `set` | Evaluates expression; updates state; returns `null` |
 | `if` | Evaluates each branch condition in order; pushes first truthy branch body as new frame; returns `null` |
 | `goto` | Looks up chapter by name; clears stack; pushes chapter body; returns `null` |
-| `call` | Looks up registered hook; evaluates args; invokes hook; returns `null` |
+| `call` | Looks up registered hook; evaluates args; invokes hook, or jumps to a chapter when the name resolves as a label; returns `null` |
+| `choice` | Returns a choice step to the host and pauses until `engine.choose(index)` is called |
+| `return` | Restores the most recent saved call frame; returns `null` |
 | `block` | Pushes block's body as a new frame (chapters encountered inline during flow); returns `null` |
 | `js` | Ignored (stub); returns `null` |
+
+### Save / load snapshots
+
+`engine.saveState()` captures the mutable runtime state around the immutable AST: current file, execution frames, saved call frames, variable maps, initialization status, and any pending choice. `engine.loadState(snapshot)` restores that state onto an engine built from the same project.
 
 ### Goto semantics
 
 `goto` is a **hard reset** — it clears the entire frame stack and pushes only the target chapter's body. This prevents stack growth in dialogue loops and makes `goto` behave like a true jump rather than a subroutine call.
+
+### Choice flow
+
+When the runtime reaches a choice node, it returns a pending `choice` result and waits for the host to resolve it.
+
+```ts
+const step = engine.next();
+
+if (step.type === "choice") {
+  showChoices(step.options);
+  engine.choose(0);
+}
+```
+
+The engine keeps returning the same `choice` result until `choose(index)` is called.
+
+### Call / return trace
+
+Subroutine-style `call` saves the current frame stack and jumps into the target chapter. `return` restores the saved stack and resumes after the call site.
+
+```
+call INTRO   -> save current frames, enter INTRO
+return       -> restore saved frames, continue after call
+```
 
 ### Expression evaluator
 
@@ -185,7 +215,8 @@ The evaluator is a recursive `evalExpr(expr: Expression): unknown` switch. Key b
 
 - **Identifiers** look up the variable in the `state` Map. Unknown variables return `null`.
 - **`&&` / `||`** short-circuit using JavaScript's own short-circuit semantics.
-- **Member access** (`hero.name`) safely returns `null` for missing keys or non-object values.
+- **Member access** (`hero.name`) safely returns `null` for missing keys, non-object values, or prototype-chain lookups.
+- **Arithmetic** is explicit: numeric operators require finite numbers, while `+` also concatenates strings.
 - **Call expressions** (`Actor("Lyra")`) invoke registered hooks and capture the return value.
 
 ### String interpolation
@@ -200,7 +231,7 @@ Errors inside an interpolation expression are caught and silently replaced with 
 
 ### State
 
-All variables are stored in a single `Map<string, unknown>`. There is no scoping — every variable is global within a running script. This is intentional: ValeFlow is a dialogue *control* language, not a general-purpose language.
+Runtime variables are split into a global map and a local/session map. Global declarations and cross-file globals live in the shared map; ordinary `declare` and `set` operations write to local state unless a variable already exists globally. `engine.getState()` merges both maps for inspection, with local values taking precedence on key collisions.
 
 ---
 
@@ -230,6 +261,8 @@ src/
   │    registerFunction(name, fn)
   │    next() → StepResult
   │    getState() → Record<string, unknown>
+  │    saveState() → EngineSnapshot
+  │    loadState(snapshot) → this
   │    (private) exec(node) → StepResult | null
   │    (private) evalExpr(expr) → unknown
   │    (private) interpolate(text) → string

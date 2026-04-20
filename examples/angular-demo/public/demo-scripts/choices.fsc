@@ -1,5 +1,6 @@
 declare hero   = Actor("Theron")
 declare ending = "none"
+declare hasCharm = false
 
 chapter START:
     hero "The path splits before you."
@@ -24,6 +25,9 @@ chapter FOREST:
     hero "Something watches from the shadows."
     "You find a carved stone marker — older than any map."
     choice:
+        -> "Use the charm" if hasCharm:
+            "The charm warms in your pocket and the marker splits open."
+            hero "So that's what it was for."
         -> "Inspect the marker":
             "The inscription reads: 'Turn back, wanderer.'"
             hero "Maybe I should listen."

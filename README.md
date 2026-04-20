@@ -36,33 +36,30 @@ chapter ENTER:
 - **Pluggable hooks** — register any function (`Actor`, `log`, `playSFX`, …) from host code
 - **String interpolation** — `"${hero.name} steps forward."` evaluated against live state
 - **Goto / chapters** — named chapters act as labels; `goto` jumps between them
+- **Call / Return** — `call` jumps to a chapter as a reusable subroutine and `return` resumes afterward
 - **Multi-file projects** — `loadProject()` links multiple `.fsc` files; cross-file `goto file::LABEL`; shared `declare global` variables
+- **Improved Expressions** — safer property access, explicit operator semantics, and string-friendly arithmetic
 - **Tree serializer** — `serializeTree()` exports the entire dialogue tree as clean JSON
+- **Save / Load** — `engine.saveState()` / `engine.loadState()` snapshot and restore full engine state
 - **Zero dependencies** — hand-written lexer, recursive-descent parser, frame-stack runtime
+- **Conditional Choices** — branching dialogue with optional conditions  
 
-## Future Plans
+## 🚧 Future Plans
 
-- **Live editing** — add/remove/modify nodes at runtime, with full state preservation
-- **Save/load** — snapshot the full engine state to support save games, undo/redo, time travel debugging
-- **Cross-file imports** — import/export variables and functions between files, with static checks
-```
-import "shop.flow"
+- **Imports** — split scripts across files with static validation  
+- **Events / Hooks** — trigger custom logic from scripts  
+- **i18n** — built-in localization support  
+- **Chapter State Tracking** — detect visited and completed chapters  
+- **Persistent State** — variables that survive across playthroughs  
+- **Skip / Auto Mode** — fast-forward or auto-advance dialogue  
 
-goto SHOP
-```
-- **Events / Hooks** — trigger custom events from the script, with listener support in host code
-```
-on enter SHOP:
-    call playMusic("shop_theme")
-on leave SHOP:
-    call stopMusic("shop_theme")
-```
-- **🎬 Timeline / sequencing** - allow wait comands
-- **Choice conditions** - show/hide options based on state
-- **Dialogue formatting** - customize the appearance of dialogue text
-- **Better expression support** - more complex expressions, operator precedence, function return values
-- **i18n support** - built-in features for internationalization and localization
+## 🧪 Experimental / Long-Term
 
+- **Live Editing** — modify scripts at runtime with state preservation  
+- **Timeline / Async Flow** — delays, sequencing, and timed events  
+- **Observability (RxJS)** — reactive streams for engine state and events
+- **Image / SFX Support** — built-in handling for media assets
+- **Visual Editor** — drag-and-drop interface for building dialogue trees
 
 ## Installation
 
@@ -197,6 +194,16 @@ call log("player_moved")
 call playSFX("door_open")
 ```
 
+### Subroutines
+
+```
+call INTRO
+  hero "I will be back."
+return
+```
+
+`call` jumps to a chapter label and `return` resumes execution after the call site.
+
 ### Chapters / labels
 
 ```
@@ -224,6 +231,27 @@ if (step.type === "choice") {
 ```
 
 `next()` returns the same `choice` result until `choose(index)` is called.
+
+Example integration loop:
+
+```ts
+function advance() {
+  const step = engine.next();
+
+  switch (step.type) {
+    case "choice":
+      showChoices(step.options);
+      engine.choose(0);
+      break;
+    case "say":
+      showDialogue(step.actor, step.text);
+      break;
+    case "narration":
+      showNarration(step.text);
+      break;
+  }
+}
+```
 
 ---
 
@@ -309,12 +337,13 @@ node node_modules/@angular/cli/bin/ng.js serve
 # → http://localhost:4200
 ```
 
-The demo includes 8 tabs:
+The demo includes 11 tabs:
 
 | Tab | What it shows |
 |---|---|
 | Introduction | Actors, narration, if/else, goto |
 | Variables & Interpolation | `declare`, `set`, `${}` |
+| Improved Expressions | String concatenation, safe member access, conditional branching |
 | if / elseif / else | Full condition chains |
 | Function Calls | `call` with registered hooks |
 | Goto Loop | Chapter looping with a countdown |
@@ -331,6 +360,15 @@ The demo includes 8 tabs:
 See [docs/api.md](docs/api.md) for the full API.  
 See [docs/language.md](docs/language.md) for the language reference.  
 See [docs/architecture.md](docs/architecture.md) for internals.
+
+## Changelog
+
+### 0.2.0
+
+- Added `call` / `return` for subroutines
+- Added conditional choices (`choice:` options can use `if <condition>`)
+- Added better expression support: string concatenation, safe member access, and explicit operator semantics
+- Added engine save/load snapshots via `engine.saveState()` / `engine.loadState()`
 
 ---
 

@@ -1,6 +1,8 @@
 import { Token, TokenType } from "../types.js";
 
-const KEYWORDS: Record<string, TokenType> = {
+const KEYWORDS: Record<string, TokenType> = Object.create(null);
+
+Object.assign(KEYWORDS, {
   declare : TokenType.DECLARE,
   chapter : TokenType.CHAPTER,
   if      : TokenType.IF,
@@ -8,13 +10,14 @@ const KEYWORDS: Record<string, TokenType> = {
   else    : TokenType.ELSE,
   goto    : TokenType.GOTO,
   call    : TokenType.CALL,
+  return  : TokenType.RETURN,
   set     : TokenType.SET,
   choice  : TokenType.CHOICE,
   js      : TokenType.JS,
   true    : TokenType.BOOLEAN,
   false   : TokenType.BOOLEAN,
   null    : TokenType.NULL,
-};
+});
 
 /**
  * Tokenise a ValeFlow source string into a flat token list.

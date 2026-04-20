@@ -250,6 +250,7 @@ class Parser {
       case TokenType.IF:       return this.parseIf();
       case TokenType.GOTO:     return this.parseGoto();
       case TokenType.CALL:     return this.parseCall();
+      case TokenType.RETURN:   return this.parseReturn();
       case TokenType.SET:      return this.parseSet();
       case TokenType.CHOICE:   return this.parseChoice();
       case TokenType.JS:       return this.parseJs();
@@ -346,16 +347,38 @@ class Parser {
   private parseCall(): Node {
     const line = this.peek().line;
     this.advance(); // CALL
-    const name = this.expect(TokenType.IDENTIFIER).value;
-    this.expect(TokenType.LPAREN);
-    const args: Expression[] = [];
-    if (!this.check(TokenType.RPAREN)) {
-      args.push(this.expression());
-      while (this.match(TokenType.COMMA)) args.push(this.expression());
+
+    // Match `goto` target syntax so subroutine calls can jump by chapter name.
+    let name = this.expect(TokenType.IDENTIFIER).value;
+    while (this.check(TokenType.DOT)) {
+      this.advance();
+      name += "." + this.expect(TokenType.IDENTIFIER).value;
     }
-    this.expect(TokenType.RPAREN);
+    if (this.check(TokenType.COLONCOLON)) {
+      this.advance();
+      name += "::" + this.expect(TokenType.IDENTIFIER).value;
+    }
+
+    const args: Expression[] = [];
+
+    if (this.check(TokenType.LPAREN)) {
+      this.advance();
+      if (!this.check(TokenType.RPAREN)) {
+        args.push(this.expression());
+        while (this.match(TokenType.COMMA)) args.push(this.expression());
+      }
+      this.expect(TokenType.RPAREN);
+    }
+
     if (this.check(TokenType.NEWLINE)) this.advance();
     return { type: "call", name, args, line };
+  }
+
+  private parseReturn(): Node {
+    const line = this.peek().line;
+    this.advance(); // RETURN
+    if (this.check(TokenType.NEWLINE)) this.advance();
+    return { type: "return", line };
   }
 
   private parseSet(): Node {
@@ -410,14 +433,16 @@ class Parser {
         // ── Full body syntax: -> "label": <block> ─────────────
         this.advance(); // consume ->
         const label = this.expect(TokenType.STRING).value;
+        const condition = this.parseChoiceCondition();
         this.expect(TokenType.COLON);
         if (this.check(TokenType.NEWLINE)) this.advance();
         const body = this.block();
-        options.push({ label, body });
+        options.push({ label, condition, body });
 
       } else if (this.check(TokenType.STRING)) {
         // ── Shorthand syntax: "label" -> TARGET ───────────────
         const labelTok = this.advance();       // STRING
+        const condition = this.parseChoiceCondition();
         this.expect(TokenType.ARROW);
         // Target may be dotted (file.flow) and/or cross-file (::LABEL)
         let target = this.expect(TokenType.IDENTIFIER).value;
@@ -431,7 +456,7 @@ class Parser {
         }
         if (this.check(TokenType.NEWLINE)) this.advance();
         const gotoNode: Node = { type: "goto", target, line: labelTok.line };
-        options.push({ label: labelTok.value, body: [gotoNode] });
+        options.push({ label: labelTok.value, condition, body: [gotoNode] });
 
       } else {
         this.advance(); // skip unknown token
@@ -440,6 +465,12 @@ class Parser {
     if (this.check(TokenType.DEDENT)) this.advance();
 
     return { type: "choice", options, line };
+  }
+
+  private parseChoiceCondition(): Expression | null {
+    if (!this.check(TokenType.IF)) return null;
+    this.advance(); // IF
+    return this.expression();
   }
 
   private parseNarration(): Node {

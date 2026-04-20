@@ -9,6 +9,18 @@ Local VS Code language support for ValeFlow files.
 - Indentation rules for block syntax
 - Handy snippets for chapters and choices
 
+Example script:
+
+```valeflow
+declare hero = Actor("Lyra")
+
+chapter START:
+    hero "Hello, world!"
+    choice:
+        "Continue" -> NEXT
+        "Quit"     -> END
+```
+
 ## Try it locally
 
 1. Open this extension folder in VS Code.
