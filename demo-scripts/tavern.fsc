@@ -1,0 +1,27 @@
+declare innkeeper = Actor("Rowan")
+declare traveler  = Actor("Mira")
+declare gold = 5
+
+chapter ENTRANCE:
+    "Mira pushes open the heavy tavern door."
+    innkeeper "Welcome to the Rusty Flagon, traveler."
+    traveler "A room for the night — and news from the road."
+    goto BARTER
+
+chapter BARTER:
+    innkeeper "Five gold for the room."
+    if gold >= 5:
+        traveler "Done."
+        set gold = gold - 5
+        call log("room_rented")
+        goto NIGHT
+    else:
+        traveler "I am a little short, I am afraid."
+        innkeeper "The fire is free. Sleep there."
+
+chapter NIGHT:
+    "The fire crackles low."
+    innkeeper "You look like you have walked far."
+    traveler "From Vareth. Three weeks on foot."
+    innkeeper "Then sleep. The road will keep."
+    "Gold remaining: ${gold}."

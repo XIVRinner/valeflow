@@ -1,0 +1,12 @@
+declare hero = Actor("Hero")
+declare count = 0
+
+chapter START:
+    hero "Hello, FlowScript!"
+    set count = count + 1
+    hero "Step ${count} — variables work!"
+    set count = count + 1
+    "This is narration text."
+    if count > 1:
+        hero "Branching works too."
+    "Edit this script above, then click Run ▶"

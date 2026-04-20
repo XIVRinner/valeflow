@@ -1,0 +1,19 @@
+declare actor1 = Actor("Adam")
+declare actor2 = Actor("Eve")
+declare hasKey = false
+
+chapter START:
+    "It was a quiet morning in Grayvale."
+    actor1 "I have nothing to do today."
+    if hasKey:
+        actor1 "Wait... I already have the key?"
+    else:
+        actor1 "Maybe I should explore."
+    call log("Player entered exploration mindset")
+    goto ENCOUNTER
+
+chapter ENCOUNTER:
+    actor2 "Hello there, traveler."
+    actor1 "Oh! Hi, Eve. I was just looking for something to do."
+    actor2 "Then follow me."
+    "The two adventurers set off together."

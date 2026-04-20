@@ -1,0 +1,22 @@
+declare hero = Actor("Lyra")
+declare score = 0
+
+chapter START:
+    hero "Let the inspection begin!"
+    set score = score + 10
+    if score >= 10:
+        hero "Score threshold met."
+    else:
+        hero "Not enough."
+    choice:
+        -> "Branch A":
+            "You took branch A."
+            set score = score + 5
+        -> "Branch B":
+            "You took branch B."
+    hero "Final score: ${score}"
+    goto EPILOGUE
+
+chapter EPILOGUE:
+    "The curtain falls."
+    hero "That is all."

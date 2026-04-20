@@ -1,0 +1,10 @@
+declare narrator = Actor("Narrator")
+declare player = Actor("Hero")
+
+chapter START:
+    call setTitle("The Grand Hall")
+    narrator "The hall falls silent."
+    player "I am ready."
+    call log("scene: grand_hall")
+    call announce("player_ready")
+    "The doors open before the hero."
