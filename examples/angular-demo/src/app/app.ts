@@ -2,9 +2,8 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { DialogueRunnerComponent } from './dialogue-runner/dialogue-runner.component';
 import { StateViewerComponent } from './state-viewer/state-viewer.component';
 import { TreeViewerComponent } from './tree-viewer/tree-viewer.component';
-import { DEMO_SCRIPTS, DemoScript, EXPERIMENT_SCRIPT, EXPERIMENT_STARTER } from './scripts';
+import { DEMO_SCRIPTS, DemoScript, EXPERIMENT_SCRIPT, hydrateDemoScripts, loadExperimentStarter } from './scripts';
 import { FlowscriptService } from './flowscript.service';
-
 @Component({
   selector: 'app-root',
   imports: [DialogueRunnerComponent, StateViewerComponent, TreeViewerComponent],
@@ -291,11 +290,11 @@ import { FlowscriptService } from './flowscript.service';
   `],
 })
 export class App implements OnInit {
-  protected readonly svc     = inject(FlowscriptService);
-  protected readonly scripts = [...DEMO_SCRIPTS, EXPERIMENT_SCRIPT];
+  protected readonly svc = inject(FlowscriptService);
+  protected scripts: DemoScript[] = [];
   protected activeScript: DemoScript | null = null;
-  protected experimentSource = EXPERIMENT_STARTER;
-  protected compileError     = signal<string | null>(null);
+  protected experimentSource = '';
+  protected compileError = signal<string | null>(null);
 
   protected get isExperiment(): boolean {
     return this.activeScript?.id === 'experiment';
@@ -306,7 +305,25 @@ export class App implements OnInit {
   }
 
   ngOnInit(): void {
-    this.select(this.scripts[0]);
+    void this.initializeScripts();
+  }
+
+  private async initializeScripts(): Promise<void> {
+    try {
+      const [scripts, starter] = await Promise.all([
+        hydrateDemoScripts([...DEMO_SCRIPTS]),
+        loadExperimentStarter(),
+      ]);
+
+      this.experimentSource = starter;
+      this.scripts = [...scripts, { ...EXPERIMENT_SCRIPT, source: starter }];
+      this.select(this.scripts[0]);
+    } catch (e: any) {
+      this.compileError.set(e?.message ?? 'Failed to load demo scripts');
+      this.scripts = [{ ...EXPERIMENT_SCRIPT, source: '' }];
+      this.activeScript = this.scripts[0] ?? null;
+      this.svc.clear();
+    }
   }
 
   select(script: DemoScript): void {

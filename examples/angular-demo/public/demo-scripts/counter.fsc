@@ -1,0 +1,15 @@
+declare hero = Actor("Lyra")
+declare steps = 0
+declare goal = 3
+
+chapter START:
+    hero "Time to train!"
+    set steps = steps + 1
+    hero "That's step ${steps}."
+    set steps = steps + 1
+    hero "Step ${steps} done."
+    set steps = steps + 1
+    if steps >= goal:
+        "Lyra completes all ${goal} steps. Training finished!"
+    else:
+        "Something went wrong with the count."

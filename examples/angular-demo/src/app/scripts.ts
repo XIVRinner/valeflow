@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────
-// Built-in example FlowScript scripts for the demo
+// Built-in example FlowScript scripts for the demo.
+// Sources now live in /public/demo-scripts as real .fsc files.
 // ─────────────────────────────────────────────────────────────
 
 export interface DemoScript {
@@ -7,303 +8,103 @@ export interface DemoScript {
   title: string;
   description: string;
   source: string;
+  assetPath?: string;
 }
 
 export const DEMO_SCRIPTS: DemoScript[] = [
   {
-    id: "intro",
-    title: "Introduction",
-    description: "Actors, narration, if/else branching, and goto loops.",
-    source: `
-declare actor1 = Actor("Adam")
-declare actor2 = Actor("Eve")
-declare hasKey = false
-
-chapter START:
-    "It was a quiet morning in Grayvale."
-    actor1 "I have nothing to do today."
-    if hasKey:
-        actor1 "Wait... I already have the key?"
-    else:
-        actor1 "Maybe I should explore."
-    call log("Player entered exploration mindset")
-    goto ENCOUNTER
-
-chapter ENCOUNTER:
-    actor2 "Hello there, traveler."
-    actor1 "Oh! Hi, Eve. I was just looking for something to do."
-    actor2 "Then follow me."
-    "The two adventurers set off together."
-`.trim(),
+    id: 'intro',
+    title: 'Introduction',
+    description: 'Actors, narration, if/else branching, and goto loops.',
+    assetPath: 'demo-scripts/intro.fsc',
+    source: '',
   },
   {
-    id: "counter",
-    title: "Variables & Interpolation",
-    description: "declare / set, arithmetic, and string interpolation.",
-    source: `
-declare hero = Actor("Lyra")
-declare steps = 0
-declare goal = 3
-
-chapter START:
-    hero "Time to train!"
-    set steps = steps + 1
-    hero "That's step \${steps}."
-    set steps = steps + 1
-    hero "Step \${steps} done."
-    set steps = steps + 1
-    if steps >= goal:
-        "Lyra completes all \${goal} steps. Training finished!"
-    else:
-        "Something went wrong with the count."
-`.trim(),
+    id: 'counter',
+    title: 'Variables & Interpolation',
+    description: 'declare / set, arithmetic, and string interpolation.',
+    assetPath: 'demo-scripts/counter.fsc',
+    source: '',
   },
   {
-    id: "branching",
-    title: "if / elseif / else",
-    description: "Condition chains and nested branching.",
-    source: `
-declare mood = "curious"
-declare hero = Actor("Kira")
-
-chapter START:
-    hero "Good morning, world!"
-    if mood == "happy":
-        hero "What a beautiful day!"
-        "Kira smiles warmly at the sunrise."
-    elseif mood == "sad":
-        hero "I just can't get going today..."
-        "Kira sighs heavily."
-    elseif mood == "curious":
-        hero "I wonder what today will bring."
-        "Kira's eyes light up with anticipation."
-    else:
-        hero "Hmm, not sure how I feel."
-    hero "Well — adventure awaits either way!"
-`.trim(),
+    id: 'branching',
+    title: 'if / elseif / else',
+    description: 'Condition chains and nested branching.',
+    assetPath: 'demo-scripts/branching.fsc',
+    source: '',
   },
   {
-    id: "functions",
-    title: "Function Calls",
-    description: "call statement with registered engine hooks.",
-    source: `
-declare narrator = Actor("Narrator")
-declare player = Actor("Hero")
-
-chapter START:
-    call setTitle("The Grand Hall")
-    narrator "The hall falls silent."
-    player "I am ready."
-    call log("scene: grand_hall")
-    call announce("player_ready")
-    "The doors open before the hero."
-`.trim(),
+    id: 'functions',
+    title: 'Function Calls',
+    description: 'call statement with registered engine hooks.',
+    assetPath: 'demo-scripts/functions.fsc',
+    source: '',
   },
-
-  // ── New demos ──────────────────────────────────────────────────
-
   {
     id: 'loop',
     title: 'Goto Loop',
     description: 'goto jumps between chapters — used here to build a countdown loop.',
-    source: `
-declare voice = Actor("System")
-declare n = 5
-
-chapter START:
-    voice "Initiating countdown..."
-    goto TICK
-
-chapter TICK:
-    voice "T-minus \${n}."
-    set n = n - 1
-    if n > 0:
-        goto TICK
-    voice "Ignition!"
-    "The rocket clears the launchpad."
-`.trim(),
+    assetPath: 'demo-scripts/loop.fsc',
+    source: '',
   },
-
   {
     id: 'tavern',
     title: 'The Tavern',
     description: 'Multiple named chapters with goto navigation and gold-based branching.',
-    source: `
-declare innkeeper = Actor("Rowan")
-declare traveler  = Actor("Mira")
-declare gold = 5
-
-chapter ENTRANCE:
-    "Mira pushes open the heavy tavern door."
-    innkeeper "Welcome to the Rusty Flagon, traveler."
-    traveler "A room for the night — and news from the road."
-    goto BARTER
-
-chapter BARTER:
-    innkeeper "Five gold for the room."
-    if gold >= 5:
-        traveler "Done."
-        set gold = gold - 5
-        call log("room_rented")
-        goto NIGHT
-    else:
-        traveler "I am a little short, I am afraid."
-        innkeeper "The fire is free. Sleep there."
-
-chapter NIGHT:
-    "The fire crackles low."
-    innkeeper "You look like you have walked far."
-    traveler "From Vareth. Three weeks on foot."
-    innkeeper "Then sleep. The road will keep."
-    "Gold remaining: \${gold}."
-`.trim(),
+    assetPath: 'demo-scripts/tavern.fsc',
+    source: '',
   },
-
   {
     id: 'riddle',
     title: 'The Riddle',
     description: 'Conditional story across multiple chapters — change answer to see every path.',
-    source: `
-declare sage = Actor("The Sage")
-declare answer = "echo"
-
-chapter START:
-    "The sage sits by a lantern in the fog."
-    sage "I speak without a mouth."
-    sage "I hear without ears."
-    sage "I have no body, yet I come alive with wind."
-    sage "What am I?"
-    if answer == "echo":
-        goto CORRECT
-    elseif answer == "wind":
-        goto CLOSE
-    else:
-        goto WRONG
-
-chapter CORRECT:
-    sage "Correct — I am an echo."
-    sage "You carry wisdom with you, traveler."
-    call log("riddle: correct")
-
-chapter CLOSE:
-    sage "Close... but not quite right."
-    sage "The answer was: echo."
-    call log("riddle: close")
-
-chapter WRONG:
-    sage "I am afraid that is incorrect."
-    sage "The answer was: echo."
-    call log("riddle: wrong")
-`.trim(),
+    assetPath: 'demo-scripts/riddle.fsc',
+    source: '',
   },
-
-  // ── Choice system demo ─────────────────────────────────────────
-
   {
     id: 'choices',
     title: '⬡ Choices',
     description: 'Interactive branching with the choice: syntax. Pick an option to steer the story.',
-    source: `
-declare hero   = Actor("Theron")
-declare ending = "none"
-
-chapter START:
-    hero "The path splits before you."
-    "You stand at a crossroads in the Whispering Wood."
-    choice:
-        -> "Take the forest path":
-            "The trees close in. Ancient silence wraps around you."
-            hero "It feels old here. Very old."
-            set ending = "forest"
-            goto FOREST
-        -> "Head toward the village":
-            hero "I could use some food."
-            "The smell of fresh bread drifts on the breeze."
-            set ending = "town"
-            goto TOWN
-        -> "Rest here a moment":
-            "You sit on a mossy stone."
-            hero "No rush. The road will wait."
-            goto START
-
-chapter FOREST:
-    hero "Something watches from the shadows."
-    "You find a carved stone marker — older than any map."
-    choice:
-        -> "Inspect the marker":
-            "The inscription reads: 'Turn back, wanderer.'"
-            hero "Maybe I should listen."
-        -> "Press deeper into the forest":
-            hero "I didn't come this far to stop now."
-            "The trees thin. Ruins emerge from the fog."
-    "Your ending: \${ending}."
-
-chapter TOWN:
-    "The village of Millhaven comes into view."
-    hero "A warm fire would be welcome."
-    "The innkeeper nods as you push open the door."
-    choice:
-        -> "Ask for a room":
-            "The innkeeper hands you a key."
-            hero "Perfect."
-        -> "Just ask about the road ahead":
-            hero "What lies east of here?"
-            "She shrugs. 'Ruins. And worse.'"
-    "Your ending: \${ending}."
-`.trim(),
+    assetPath: 'demo-scripts/choices.fsc',
+    source: '',
   },
-
-  // ── Tree viewer ────────────────────────────────────────────────
-
   {
     id: 'tree',
     title: '⊞ Tree View',
     description: 'Inspect the full AST as structured JSON. Switch any demo tab then return here.',
-    source: `
-declare hero = Actor("Lyra")
-declare score = 0
-
-chapter START:
-    hero "Let the inspection begin!"
-    set score = score + 10
-    if score >= 10:
-        hero "Score threshold met."
-    else:
-        hero "Not enough."
-    choice:
-        -> "Branch A":
-            "You took branch A."
-            set score = score + 5
-        -> "Branch B":
-            "You took branch B."
-    hero "Final score: \${score}"
-    goto EPILOGUE
-
-chapter EPILOGUE:
-    "The curtain falls."
-    hero "That is all."
-`.trim(),
+    assetPath: 'demo-scripts/tree.fsc',
+    source: '',
   },
 ];
 
-// ── Experiment / Playground ─────────────────────────────────────
+async function loadTextAsset(assetPath: string): Promise<string> {
+  const response = await fetch(assetPath);
+  if (!response.ok) {
+    throw new Error(`Failed to load demo asset: ${assetPath}`);
+  }
 
-export const EXPERIMENT_STARTER = `declare hero = Actor("Hero")
-declare count = 0
+  return (await response.text()).trim();
+}
 
-chapter START:
-    hero "Hello, FlowScript!"
-    set count = count + 1
-    hero "Step \${count} — variables work!"
-    set count = count + 1
-    "This is narration text."
-    if count > 1:
-        hero "Branching works too."
-    "Edit this script above, then click Run ▶"`.trim();
+export function hydrateDemoScripts(scripts: DemoScript[]): Promise<DemoScript[]> {
+  return Promise.all(
+    scripts.map(async script => {
+      if (!script.assetPath) return script;
+      return {
+        ...script,
+        source: await loadTextAsset(script.assetPath),
+      };
+    }),
+  );
+}
+
+export function loadExperimentStarter(): Promise<string> {
+  return loadTextAsset('demo-scripts/experiment-starter.fsc');
+}
 
 export const EXPERIMENT_SCRIPT: DemoScript = {
   id: 'experiment',
   title: '⚗ Playground',
   description: 'Write and run your own FlowScript. Edit the source on the left and click Run.',
-  source: EXPERIMENT_STARTER,
+  source: '',
 };

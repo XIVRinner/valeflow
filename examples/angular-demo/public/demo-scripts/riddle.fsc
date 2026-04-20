@@ -1,0 +1,30 @@
+declare sage = Actor("The Sage")
+declare answer = "echo"
+
+chapter START:
+    "The sage sits by a lantern in the fog."
+    sage "I speak without a mouth."
+    sage "I hear without ears."
+    sage "I have no body, yet I come alive with wind."
+    sage "What am I?"
+    if answer == "echo":
+        goto CORRECT
+    elseif answer == "wind":
+        goto CLOSE
+    else:
+        goto WRONG
+
+chapter CORRECT:
+    sage "Correct — I am an echo."
+    sage "You carry wisdom with you, traveler."
+    call log("riddle: correct")
+
+chapter CLOSE:
+    sage "Close... but not quite right."
+    sage "The answer was: echo."
+    call log("riddle: close")
+
+chapter WRONG:
+    sage "I am afraid that is incorrect."
+    sage "The answer was: echo."
+    call log("riddle: wrong")

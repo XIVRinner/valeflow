@@ -1,0 +1,29 @@
+{
+  "Chapter": {
+    "prefix": "chapter",
+    "body": [
+      "chapter ${1:START}:",
+      "    ${2:\"Narration text.\"}"
+    ],
+    "description": "Create a ValeFlow chapter"
+  },
+  "Choice": {
+    "prefix": "choice",
+    "body": [
+      "choice:",
+      "    \"${1:Option one}\" -> ${2:TARGET_ONE}",
+      "    \"${3:Option two}\" -> ${4:TARGET_TWO}"
+    ],
+    "description": "Create a shorthand choice block"
+  },
+  "If Else": {
+    "prefix": "ifvf",
+    "body": [
+      "if ${1:condition}:",
+      "    ${2:\"True branch\"}",
+      "else:",
+      "    ${3:\"False branch\"}"
+    ],
+    "description": "Create a ValeFlow if/else block"
+  }
+}

@@ -1,0 +1,14 @@
+declare voice = Actor("System")
+declare n = 5
+
+chapter START:
+    voice "Initiating countdown..."
+    goto TICK
+
+chapter TICK:
+    voice "T-minus ${n}."
+    set n = n - 1
+    if n > 0:
+        goto TICK
+    voice "Ignition!"
+    "The rocket clears the launchpad."

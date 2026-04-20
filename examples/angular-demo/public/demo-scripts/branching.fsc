@@ -1,0 +1,17 @@
+declare mood = "curious"
+declare hero = Actor("Kira")
+
+chapter START:
+    hero "Good morning, world!"
+    if mood == "happy":
+        hero "What a beautiful day!"
+        "Kira smiles warmly at the sunrise."
+    elseif mood == "sad":
+        hero "I just can't get going today..."
+        "Kira sighs heavily."
+    elseif mood == "curious":
+        hero "I wonder what today will bring."
+        "Kira's eyes light up with anticipation."
+    else:
+        hero "Hmm, not sure how I feel."
+    hero "Well — adventure awaits either way!"

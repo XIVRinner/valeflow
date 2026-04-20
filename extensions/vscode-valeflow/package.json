@@ -1,0 +1,56 @@
+{
+  "name": "valeflow-language",
+  "displayName": "ValeFlow Language",
+  "description": "Syntax highlighting, snippets, and editor support for ValeFlow / FlowScript files.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XIVRinner/flowscript"
+  },
+  "homepage": "https://github.com/XIVRinner/flowscript",
+  "bugs": {
+    "url": "https://github.com/XIVRinner/flowscript/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "valeflow",
+    "dialogue",
+    "dsl",
+    "narrative"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "valeflow",
+        "aliases": [
+          "ValeFlow"
+        ],
+        "extensions": [
+          ".fsc",
+          ".flow"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "valeflow",
+        "scopeName": "source.valeflow",
+        "path": "./syntaxes/valeflow.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "valeflow",
+        "path": "./snippets/valeflow.code-snippets"
+      }
+    ]
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ValeFlow",
+  "scopeName": "source.valeflow",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#chapter" },
+    { "include": "#choiceArrow" },
+    { "include": "#goto" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#functions" },
+    { "include": "#strings" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.valeflow",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "chapter": {
+      "patterns": [
+        {
+          "name": "meta.chapter.valeflow",
+          "match": "^(\\s*)(chapter)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*:",
+          "captures": {
+            "2": { "name": "keyword.control.chapter.valeflow" },
+            "3": { "name": "entity.name.section.valeflow" }
+          }
+        }
+      ]
+    },
+    "choiceArrow": {
+      "patterns": [
+        {
+          "name": "keyword.operator.choice.valeflow",
+          "match": "->"
+        }
+      ]
+    },
+    "goto": {
+      "patterns": [
+        {
+          "name": "meta.goto.valeflow",
+          "match": "\\b(goto)\\s+([A-Za-z0-9_.-]+::)?([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.control.goto.valeflow" },
+            "2": { "name": "entity.name.namespace.valeflow" },
+            "3": { "name": "entity.name.label.valeflow" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.valeflow",
+          "match": "\\b(declare|set|if|elseif|else|goto|call|choice|chapter|js)\\b"
+        },
+        {
+          "name": "storage.modifier.valeflow",
+          "match": "\\bglobal\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.valeflow",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.valeflow",
+          "match": "\\b\\d+(?:\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.valeflow",
+          "match": "==|!=|<=|>=|&&|\\|\\||[+\\-*/<>!=:]"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "support.function.valeflow",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.valeflow",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "meta.interpolation.valeflow",
+              "begin": "\\$\\{",
+              "end": "\\}",
+              "patterns": [
+                { "include": "#constants" },
+                { "include": "#numbers" },
+                { "include": "#operators" },
+                {
+                  "name": "variable.other.valeflow",
+                  "match": "\\b[A-Za-z_][A-Za-z0-9_.]*\\b"
+                }
+              ]
+            },
+            {
+              "name": "constant.character.escape.valeflow",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
