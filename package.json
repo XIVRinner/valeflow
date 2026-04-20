@@ -1,6 +1,6 @@
 {
   "name": "@rinner/valeflow",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "A TypeScript-first dialogue scripting engine and DSL for branching narratives, featuring a step-based runtime, scoped variables, and extensible hooks.",
   "type": "module",
   "main": "./dist/index.cjs",
