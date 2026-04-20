@@ -99,4 +99,123 @@ chapter START:
     "The doors open before the hero."
 `.trim(),
   },
+
+  // ── New demos ──────────────────────────────────────────────────
+
+  {
+    id: 'loop',
+    title: 'Goto Loop',
+    description: 'goto jumps between chapters — used here to build a countdown loop.',
+    source: `
+declare voice = Actor("System")
+declare n = 5
+
+chapter START:
+    voice "Initiating countdown..."
+    goto TICK
+
+chapter TICK:
+    voice "T-minus \${n}."
+    set n = n - 1
+    if n > 0:
+        goto TICK
+    voice "Ignition!"
+    "The rocket clears the launchpad."
+`.trim(),
+  },
+
+  {
+    id: 'tavern',
+    title: 'The Tavern',
+    description: 'Multiple named chapters with goto navigation and gold-based branching.',
+    source: `
+declare innkeeper = Actor("Rowan")
+declare traveler  = Actor("Mira")
+declare gold = 5
+
+chapter ENTRANCE:
+    "Mira pushes open the heavy tavern door."
+    innkeeper "Welcome to the Rusty Flagon, traveler."
+    traveler "A room for the night — and news from the road."
+    goto BARTER
+
+chapter BARTER:
+    innkeeper "Five gold for the room."
+    if gold >= 5:
+        traveler "Done."
+        set gold = gold - 5
+        call log("room_rented")
+        goto NIGHT
+    else:
+        traveler "I am a little short, I am afraid."
+        innkeeper "The fire is free. Sleep there."
+
+chapter NIGHT:
+    "The fire crackles low."
+    innkeeper "You look like you have walked far."
+    traveler "From Vareth. Three weeks on foot."
+    innkeeper "Then sleep. The road will keep."
+    "Gold remaining: \${gold}."
+`.trim(),
+  },
+
+  {
+    id: 'riddle',
+    title: 'The Riddle',
+    description: 'Conditional story across multiple chapters — change answer to see every path.',
+    source: `
+declare sage = Actor("The Sage")
+declare answer = "echo"
+
+chapter START:
+    "The sage sits by a lantern in the fog."
+    sage "I speak without a mouth."
+    sage "I hear without ears."
+    sage "I have no body, yet I come alive with wind."
+    sage "What am I?"
+    if answer == "echo":
+        goto CORRECT
+    elseif answer == "wind":
+        goto CLOSE
+    else:
+        goto WRONG
+
+chapter CORRECT:
+    sage "Correct — I am an echo."
+    sage "You carry wisdom with you, traveler."
+    call log("riddle: correct")
+
+chapter CLOSE:
+    sage "Close... but not quite right."
+    sage "The answer was: echo."
+    call log("riddle: close")
+
+chapter WRONG:
+    sage "I am afraid that is incorrect."
+    sage "The answer was: echo."
+    call log("riddle: wrong")
+`.trim(),
+  },
 ];
+
+// ── Experiment / Playground ─────────────────────────────────────
+
+export const EXPERIMENT_STARTER = `declare hero = Actor("Hero")
+declare count = 0
+
+chapter START:
+    hero "Hello, FlowScript!"
+    set count = count + 1
+    hero "Step \${count} — variables work!"
+    set count = count + 1
+    "This is narration text."
+    if count > 1:
+        hero "Branching works too."
+    "Edit this script above, then click Run ▶"`.trim();
+
+export const EXPERIMENT_SCRIPT: DemoScript = {
+  id: 'experiment',
+  title: '⚗ Playground',
+  description: 'Write and run your own FlowScript. Edit the source on the left and click Run.',
+  source: EXPERIMENT_STARTER,
+};

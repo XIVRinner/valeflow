@@ -71,6 +71,15 @@ export class FlowscriptService {
     }
   }
 
+  /** Reset all reactive state without loading a new script. */
+  clear(): void {
+    this.steps.set([]);
+    this.logs.set([]);
+    this.done.set(false);
+    this.state.set({});
+    this.engine = null;
+  }
+
   private pushLog(msg: string): void {
     this.logs.update(l => [...l, msg]);
   }

@@ -1,7 +1,7 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { DialogueRunnerComponent } from './dialogue-runner/dialogue-runner.component';
 import { StateViewerComponent } from './state-viewer/state-viewer.component';
-import { DEMO_SCRIPTS, DemoScript } from './scripts';
+import { DEMO_SCRIPTS, DemoScript, EXPERIMENT_SCRIPT, EXPERIMENT_STARTER } from './scripts';
 import { FlowscriptService } from './flowscript.service';
 
 @Component({
@@ -22,6 +22,7 @@ import { FlowscriptService } from './flowscript.service';
             <button
               class="tab"
               [class.active]="activeScript?.id === s.id"
+              [class.tab-playground]="s.id === 'experiment'"
               (click)="select(s)"
             >
               {{ s.title }}
@@ -34,13 +35,30 @@ import { FlowscriptService } from './flowscript.service';
       <main class="body">
         <!-- Left: source panel -->
         <aside class="source-panel">
-          <div class="panel-label">FlowScript source</div>
-          <pre class="source-code">{{ activeScript?.source }}</pre>
+          <div class="panel-label">{{ isExperiment ? 'Playground' : 'FlowScript source' }}</div>
 
-          <div class="script-meta">
-            <p>{{ activeScript?.description }}</p>
-            <button class="btn-restart" (click)="restart()">↺ Restart</button>
-          </div>
+          @if (isExperiment) {
+            <textarea
+              class="source-editor"
+              [value]="experimentSource"
+              (input)="onExperimentInput($event)"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+            <div class="script-meta">
+              @if (compileError()) {
+                <p class="error-msg">⚠ {{ compileError() }}</p>
+              }
+              <p>Edit the script and click <strong>Run</strong>.</p>
+              <button class="btn-run" (click)="runExperiment()">▶ Run</button>
+            </div>
+          } @else {
+            <pre class="source-code">{{ activeScript?.source }}</pre>
+            <div class="script-meta">
+              <p>{{ activeScript?.description }}</p>
+              <button class="btn-restart" (click)="restart()">↺ Restart</button>
+            </div>
+          }
         </aside>
 
         <!-- Middle: dialogue runner -->
@@ -93,6 +111,7 @@ import { FlowscriptService } from './flowscript.service';
 
     .script-tabs {
       display: flex;
+      flex-wrap: wrap;
       gap: .35rem;
     }
 
@@ -194,12 +213,72 @@ import { FlowscriptService } from './flowscript.service';
       border-color: var(--accent);
       color: var(--accent);
     }
+
+    /* ── Playground tab ───────────────────────────── */
+
+    .tab-playground {
+      border-color: #6b5c14;
+      color: #c9a84c;
+    }
+
+    .tab-playground:hover { color: #e2bf6a; border-color: #c9a84c; }
+    .tab-playground.active {
+      background: #c9a84c;
+      border-color: #c9a84c;
+      color: #000;
+    }
+
+    /* ── Source editor (playground) ───────────────── */
+
+    .source-editor {
+      flex: 1;
+      background: var(--bg);
+      border: none;
+      outline: none;
+      resize: none;
+      color: var(--text-code);
+      font-family: monospace;
+      font-size: .77rem;
+      line-height: 1.6;
+      padding: .9rem 1rem;
+      tab-size: 4;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .error-msg {
+      color: #f87171;
+      font-size: .78rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .btn-run {
+      align-self: flex-start;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      border-radius: 5px;
+      padding: .3rem .75rem;
+      font-size: .8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+
+    .btn-run:hover { opacity: .85; }
   `],
 })
 export class App implements OnInit {
-  protected readonly svc = inject(FlowscriptService);
-  protected readonly scripts = DEMO_SCRIPTS;
+  protected readonly svc     = inject(FlowscriptService);
+  protected readonly scripts = [...DEMO_SCRIPTS, EXPERIMENT_SCRIPT];
   protected activeScript: DemoScript | null = null;
+  protected experimentSource = EXPERIMENT_STARTER;
+  protected compileError     = signal<string | null>(null);
+
+  protected get isExperiment(): boolean {
+    return this.activeScript?.id === 'experiment';
+  }
 
   ngOnInit(): void {
     this.select(this.scripts[0]);
@@ -207,10 +286,33 @@ export class App implements OnInit {
 
   select(script: DemoScript): void {
     this.activeScript = script;
-    this.svc.load(script.source);
+    this.compileError.set(null);
+    if (script.id === 'experiment') {
+      this.svc.clear();
+    } else {
+      this.svc.load(script.source);
+    }
   }
 
   restart(): void {
-    if (this.activeScript) this.svc.load(this.activeScript.source);
+    if (!this.activeScript) return;
+    if (this.isExperiment) {
+      this.runExperiment();
+    } else {
+      this.svc.load(this.activeScript.source);
+    }
+  }
+
+  onExperimentInput(event: Event): void {
+    this.experimentSource = (event.target as HTMLTextAreaElement).value;
+  }
+
+  runExperiment(): void {
+    try {
+      this.compileError.set(null);
+      this.svc.load(this.experimentSource);
+    } catch (e: any) {
+      this.compileError.set(e?.message ?? 'Unknown compile error');
+    }
   }
 }
