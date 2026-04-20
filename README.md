@@ -41,6 +41,8 @@ chapter ENTER:
 - **Improved Expressions** — safer property access, explicit operator semantics, and string-friendly arithmetic
 - **Tree serializer** — `serializeTree()` exports the entire dialogue tree as clean JSON
 - **Save / Load** — `engine.saveState()` / `engine.loadState()` snapshot and restore full engine state
+- **Chapter State Tracking** — detect visited and completed chapters
+- **Persistent State** — shared values that survive across playthroughs
 - **Zero dependencies** — hand-written lexer, recursive-descent parser, frame-stack runtime
 - **Conditional Choices** — branching dialogue with optional conditions  
 
@@ -49,8 +51,6 @@ chapter ENTER:
 - **Imports** — split scripts across files with static validation  
 - **Events / Hooks** — trigger custom logic from scripts  
 - **i18n** — built-in localization support  
-- **Chapter State Tracking** — detect visited and completed chapters  
-- **Persistent State** — variables that survive across playthroughs  
 - **Skip / Auto Mode** — fast-forward or auto-advance dialogue  
 
 ## 🧪 Experimental / Long-Term
@@ -337,7 +337,7 @@ node node_modules/@angular/cli/bin/ng.js serve
 # → http://localhost:4200
 ```
 
-The demo includes 11 tabs:
+The demo includes 12 tabs:
 
 | Tab | What it shows |
 |---|---|
@@ -350,6 +350,7 @@ The demo includes 11 tabs:
 | The Tavern | Multi-chapter hub navigation |
 | The Riddle | Branch by variable value |
 | ⬡ Choices | Interactive player choices |
+| Persistent State | Host-backed values that survive restart |
 | ⊞ Tree View | Full AST as a colour-coded collapsible tree |
 | ⚗ Playground | Live editor — write and run any ValeFlow script |
 
@@ -369,7 +370,8 @@ See [docs/architecture.md](docs/architecture.md) for internals.
 - Added conditional choices (`choice:` options can use `if <condition>`)
 - Added better expression support: string concatenation, safe member access, and explicit operator semantics
 - Added engine save/load snapshots via `engine.saveState()` / `engine.loadState()`
-
+- Added persistent state via `EngineOptions.persistent` — a host-owned store for values that survive across playthroughs
+- Added chapter state tracking (`visited` / `completed`ú flags on chapter states)
 ---
 
 ## License

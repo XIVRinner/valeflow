@@ -4,6 +4,7 @@ import {
   ChoiceOptionNode,
   LabelRef,
   StepResult, FunctionHook, RuntimeContext,
+  EngineOptions,
   EngineSnapshot,
 } from "../types.js";
 import { tokenize } from "../lexer/index.js";
@@ -17,6 +18,7 @@ import { isProject, wrapSingleProgram, resolveLabel } from "../project/index.js"
 interface Frame {
   nodes: Node[];
   index: number;
+  chapterKey: string | null;
 }
 
 interface CallFrame {
@@ -66,11 +68,24 @@ export class Engine {
     bodies: Node[][];
   } | null = null;
 
-  // ──────────────────────────────────────────────────────────
+  /** Chapters entered at least once, keyed as `file::CHAPTER`. */
+  private visitedChapters: Set<string> = new Set();
 
-  constructor(input: Program | Project) {
+  /** Chapters that have finished execution at least once. */
+  private completedChapters: Set<string> = new Set();
+
+  /** Persistent store shared across playthroughs when provided by the host. */
+  private persistent: Map<string, unknown> = new Map();
+
+  /** Original host store, kept in sync if the caller provides one. */
+  private persistentBacking: Record<string, unknown> | Map<string, unknown> | null = null;
+
+  constructor(input: Program | Project, options: EngineOptions = {}) {
     this.project = isProject(input) ? input : wrapSingleProgram(input);
     this.currentFile = this.project.entryFile;
+    this.persistentBacking = options.persistent ?? null;
+    this.persistent = this.clonePersistent(options.persistent);
+    this.syncPersistentBacking();
 
     const entryFile = this.project.files[this.currentFile];
     if (!entryFile) {
@@ -79,7 +94,7 @@ export class Engine {
       );
     }
 
-    this.stack.push({ nodes: entryFile.ast.body, index: 0 });
+    this.stack.push({ nodes: entryFile.ast.body, index: 0, chapterKey: null });
   }
 
   // ── public API ──────────────────────────────────────────
@@ -114,7 +129,7 @@ export class Engine {
     }
     const body = bodies[index];
     this.pendingChoice = null;
-    this.stack.push({ nodes: body, index: 0 });
+    this.stack.push({ nodes: body, index: 0, chapterKey: null });
   }
 
   /**
@@ -134,7 +149,6 @@ export class Engine {
       this.initialized = true;
     }
 
-    // Block until the caller resolves the pending choice
     if (this.pendingChoice) return this.pendingChoice.result;
 
     while (true) {
@@ -143,6 +157,7 @@ export class Engine {
       const frame = this.stack[this.stack.length - 1];
 
       if (frame.index >= frame.nodes.length) {
+        this.markFrameCompleted(frame);
         this.stack.pop();
         continue;
       }
@@ -185,6 +200,8 @@ export class Engine {
         },
         bodies: this.pendingChoice.bodies.map(body => body.slice()),
       } : null,
+      chapterState: this.getChapterState(),
+      persistentState: this.getPersistentState(),
     };
   }
 
@@ -212,6 +229,10 @@ export class Engine {
       },
       bodies: snapshot.pendingChoice.bodies.map(body => body.slice()),
     } : null;
+    this.visitedChapters = new Set(snapshot.chapterState.visited);
+    this.completedChapters = new Set(snapshot.chapterState.completed);
+    this.persistent = this.cloneMap(snapshot.persistentState);
+    this.syncPersistentBacking();
 
     return this;
   }
@@ -219,6 +240,59 @@ export class Engine {
   /** Name of the file currently being executed. */
   getCurrentFile(): string {
     return this.currentFile;
+  }
+
+  /** Returns the active chapter as `file::CHAPTER`, or `null` outside a chapter. */
+  getCurrentChapter(): string | null {
+    return this.getActiveChapterKey();
+  }
+
+  /** Returns the chapters entered so far, in visit order. */
+  getVisitedChapters(): string[] {
+    return [...this.visitedChapters];
+  }
+
+  /** Returns the chapters completed so far, in completion order. */
+  getCompletedChapters(): string[] {
+    return [...this.completedChapters];
+  }
+
+  /** Checks whether a chapter has been visited. */
+  hasVisitedChapter(target: string): boolean {
+    return this.visitedChapters.has(this.resolveChapterKey(target));
+  }
+
+  /** Checks whether a chapter has completed. */
+  hasCompletedChapter(target: string): boolean {
+    return this.completedChapters.has(this.resolveChapterKey(target));
+  }
+
+  /** Snapshot of chapter tracking state for UI and persistence. */
+  getChapterState(): { current: string | null; visited: string[]; completed: string[] } {
+    return {
+      current: this.getCurrentChapter(),
+      visited: this.getVisitedChapters(),
+      completed: this.getCompletedChapters(),
+    };
+  }
+
+  /** Returns a shallow snapshot of persistent values. */
+  getPersistentState(): Record<string, unknown> {
+    return this.cloneRecord(this.persistent);
+  }
+
+  /** Replaces the persistent store with the provided values. */
+  setPersistentState(values: Record<string, unknown> | Map<string, unknown>): this {
+    this.persistent = this.clonePersistent(values);
+    this.syncPersistentBacking();
+    return this;
+  }
+
+  /** Clears all persistent values. */
+  clearPersistentState(): this {
+    this.persistent.clear();
+    this.syncPersistentBacking();
+    return this;
   }
 
   // ── initialisation ───────────────────────────────────────
@@ -230,6 +304,86 @@ export class Engine {
   private initGlobals(): void {
     for (const decl of this.project.globalDeclarations) {
       this.globals.set(decl.name, this.evalExpr(decl.value));
+    }
+  }
+
+  private chapterKey(file: string, chapter: string): string {
+    return `${file}::${chapter}`;
+  }
+
+  private persistentKey(rawKey: unknown): string {
+    if (typeof rawKey === "string") return rawKey;
+    if (typeof rawKey === "number" || typeof rawKey === "boolean" || rawKey === null) {
+      return String(rawKey);
+    }
+
+    try {
+      const serialized = JSON.stringify(rawKey);
+      return serialized === undefined ? String(rawKey) : serialized;
+    } catch {
+      return String(rawKey);
+    }
+  }
+
+  private persistentGet(rawKey: unknown): unknown {
+    return this.persistent.has(this.persistentKey(rawKey))
+      ? this.persistent.get(this.persistentKey(rawKey))
+      : null;
+  }
+
+  private persistentSet(rawKey: unknown, value: unknown): unknown {
+    const key = this.persistentKey(rawKey);
+    this.persistent.set(key, value);
+    this.syncPersistentBacking();
+    return value;
+  }
+
+  private clonePersistent(values?: Record<string, unknown> | Map<string, unknown>): Map<string, unknown> {
+    if (!values) return new Map();
+    return values instanceof Map ? new Map(values) : new Map(Object.entries(values));
+  }
+
+  private syncPersistentBacking(): void {
+    if (!this.persistentBacking) return;
+
+    if (this.persistentBacking instanceof Map) {
+      this.persistentBacking.clear();
+      for (const [key, value] of this.persistent) {
+        this.persistentBacking.set(key, value);
+      }
+      return;
+    }
+
+    for (const key of Object.keys(this.persistentBacking)) {
+      delete this.persistentBacking[key];
+    }
+    for (const [key, value] of this.persistent) {
+      this.persistentBacking[key] = value;
+    }
+  }
+
+  private resolveChapterKey(target: string): string {
+    const ref = resolveLabel(this.project, this.currentFile, target);
+    return this.chapterKey(ref.file, ref.chapter.name);
+  }
+
+  private enterChapter(ref: LabelRef): void {
+    const key = this.chapterKey(ref.file, ref.chapter.name);
+    this.visitedChapters.add(key);
+    this.stack = [{ nodes: ref.chapter.body, index: 0, chapterKey: key }];
+  }
+
+  private getActiveChapterKey(): string | null {
+    for (let i = this.stack.length - 1; i >= 0; i--) {
+      const frame = this.stack[i];
+      if (frame.chapterKey) return frame.chapterKey;
+    }
+    return null;
+  }
+
+  private markFrameCompleted(frame: Frame): void {
+    if (frame.chapterKey) {
+      this.completedChapters.add(frame.chapterKey);
     }
   }
 
@@ -273,7 +427,6 @@ export class Engine {
 
       case "declare": {
         const isGlobal = node.isGlobal || this.isGlobalVar(node.name);
-        // Skip global declarations that were already evaluated in initGlobals()
         if (isGlobal && this.initialized) return null;
         const v = this.evalExpr(node.value);
         if (isGlobal) {
@@ -292,10 +445,9 @@ export class Engine {
 
       case "if": {
         for (const branch of node.branches) {
-          const pass =
-            branch.condition === null || this.evalExpr(branch.condition);
+          const pass = branch.condition === null || this.evalExpr(branch.condition);
           if (pass) {
-            this.stack.push({ nodes: branch.body, index: 0 });
+            this.stack.push({ nodes: branch.body, index: 0, chapterKey: null });
             break;
           }
         }
@@ -309,14 +461,19 @@ export class Engine {
           node.target,
           node.line
         );
-        // Jump: clear the call stack and enter the target chapter
         this.currentFile = ref.file;
-        this.stack = [{ nodes: ref.chapter.body, index: 0 }];
+        this.enterChapter(ref);
         this.callStack = [];
         return null;
       }
 
       case "call": {
+        if (node.name === "persistent") {
+          const args = node.args.map(arg => this.evalExpr(arg));
+          this.handlePersistentCall(args);
+          return null;
+        }
+
         if (node.args.length === 0) {
           const ref = this.tryResolveLabel(node.name, node.line);
           if (ref) {
@@ -325,7 +482,7 @@ export class Engine {
               stack: this.cloneFrames(this.stack),
             });
             this.currentFile = ref.file;
-            this.stack = [{ nodes: ref.chapter.body, index: 0 }];
+            this.enterChapter(ref);
             return null;
           }
         }
@@ -339,6 +496,9 @@ export class Engine {
       }
 
       case "return": {
+        if (this.stack.length > 0) {
+          this.markFrameCompleted(this.stack[this.stack.length - 1]);
+        }
         const frame = this.callStack.pop();
         if (!frame) {
           this.stack = [];
@@ -350,9 +510,12 @@ export class Engine {
       }
 
       case "block":
-        // Chapter blocks encountered during sequential top-level execution
-        // are pushed inline (not jumped to).
-        this.stack.push({ nodes: node.body, index: 0 });
+        this.visitedChapters.add(this.chapterKey(this.currentFile, node.name));
+        this.stack.push({
+          nodes: node.body,
+          index: 0,
+          chapterKey: this.chapterKey(this.currentFile, node.name),
+        });
         return null;
 
       case "choice": {
@@ -373,7 +536,6 @@ export class Engine {
       }
 
       case "js":
-        // js: blocks are stubbed — no execution
         return null;
 
       default:
@@ -473,7 +635,6 @@ export class Engine {
         return this.getVar(expr.name);
 
       case "binary": {
-        // Short-circuit for && and ||
         if (expr.operator === "&&") {
           return this.evalExpr(expr.left) && this.evalExpr(expr.right);
         }
@@ -493,6 +654,11 @@ export class Engine {
       }
 
       case "call_expr": {
+        if (expr.name === "persistent") {
+          const args = expr.args.map(a => this.evalExpr(a));
+          return this.handlePersistentCall(args);
+        }
+
         const fn = this.hooks.get(expr.name);
         if (!fn) return null;
         const args = expr.args.map(a => this.evalExpr(a));
@@ -532,10 +698,11 @@ export class Engine {
     };
   }
 
-  private cloneFrames(frames: Frame[]): Frame[] {
+  private cloneFrames(frames: Array<{ nodes: Node[]; index: number; chapterKey?: string | null }>): Frame[] {
     return frames.map(frame => ({
       nodes: frame.nodes,
       index: frame.index,
+      chapterKey: frame.chapterKey ?? null,
     }));
   }
 
@@ -558,5 +725,16 @@ export class Engine {
       return null;
     }
   }
-}
 
+  private handlePersistentCall(args: unknown[]): unknown {
+    if (args.length === 1) {
+      return this.persistentGet(args[0]);
+    }
+
+    if (args.length >= 2) {
+      return this.persistentSet(args[0], args[1]);
+    }
+
+    return this.getPersistentState();
+  }
+}

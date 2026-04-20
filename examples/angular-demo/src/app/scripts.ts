@@ -83,6 +83,13 @@ export const DEMO_SCRIPTS: DemoScript[] = [
     source: '',
   },
   {
+    id: 'persistent',
+    title: 'Persistent State',
+    description: 'Host-backed values survive restart; the shell remembers what the story wrote.',
+    assetPath: 'demo-scripts/persistent.fsc',
+    source: '',
+  },
+  {
     id: 'tree',
     title: '⊞ Tree View',
     description: 'Inspect the full AST as structured JSON. Switch any demo tab then return here.',

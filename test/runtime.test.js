@@ -96,7 +96,7 @@ chapter increment:
     return
 `;
 
-  const engine = new Engine(compile(source));
+  const engine = new Engine(compile(source), { persistent: { seenIntro: true } });
   engine.registerFunction("Actor", (_ctx, name) => ({ name }));
 
   assert.deepEqual(engine.next(), { type: "say", actor: { name: "Lyra" }, text: "Start." });
@@ -105,6 +105,7 @@ chapter increment:
   assert.equal(choice.type, "choice");
 
   const snapshot = engine.saveState();
+  assert.deepEqual(snapshot.persistentState, { seenIntro: true });
   const restored = new Engine(compile(source));
   restored.registerFunction("Actor", (_ctx, name) => ({ name }));
   restored.loadState(snapshot);
@@ -117,4 +118,60 @@ chapter increment:
     hero: { name: "Lyra" },
     count: 1,
   });
+  assert.deepEqual(restored.getPersistentState(), { seenIntro: true });
+});
+
+test("engine tracks visited and completed chapters", () => {
+  const engine = new Engine(compile(`
+chapter START:
+    "Intro."
+    goto MID
+
+chapter MID:
+    "Middle."
+
+chapter END:
+    "Done."
+`));
+
+  assert.equal(engine.getCurrentChapter(), null);
+  assert.deepEqual(engine.getVisitedChapters(), []);
+  assert.deepEqual(engine.getCompletedChapters(), []);
+
+  assert.deepEqual(engine.next(), { type: "narration", text: "Intro." });
+  assert.equal(engine.getCurrentChapter(), "__main__::START");
+  assert.equal(engine.hasVisitedChapter("START"), true);
+  assert.equal(engine.hasCompletedChapter("START"), false);
+
+  assert.deepEqual(engine.next(), { type: "narration", text: "Middle." });
+  assert.equal(engine.getCurrentChapter(), "__main__::MID");
+  assert.equal(engine.hasVisitedChapter("MID"), true);
+  assert.equal(engine.hasCompletedChapter("MID"), false);
+
+  assert.deepEqual(engine.next(), { type: "end" });
+  assert.deepEqual(engine.getVisitedChapters(), ["__main__::START", "__main__::MID"]);
+  assert.deepEqual(engine.getCompletedChapters(), ["__main__::MID"]);
+});
+
+test("persistent state survives new playthroughs when the host reuses the store", () => {
+  const sharedPersistent = {};
+
+  const first = new Engine(compile(`
+chapter START:
+    call persistent("seenIntro", true)
+    "First run."
+`), { persistent: sharedPersistent });
+
+  assert.deepEqual(first.next(), { type: "narration", text: "First run." });
+  assert.deepEqual(first.getPersistentState(), { seenIntro: true });
+
+  const second = new Engine(compile(`
+declare seenIntro = persistent("seenIntro")
+
+chapter START:
+    "Second run."
+`), { persistent: sharedPersistent });
+
+  assert.deepEqual(second.next(), { type: "narration", text: "Second run." });
+  assert.deepEqual(second.getState(), { seenIntro: true });
 });

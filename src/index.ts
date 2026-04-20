@@ -87,10 +87,12 @@ export type {
   StepResult,
   FunctionHook,
   RuntimeContext,
+  EngineOptions,
   EngineSnapshot,
   EngineFrameSnapshot,
   EngineCallFrameSnapshot,
   EngineChoiceSnapshot,
+  EngineChapterStateSnapshot,
 } from "./types.js";
 
 // ── Convenience facade ────────────────────────────────────

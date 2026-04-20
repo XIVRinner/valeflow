@@ -130,23 +130,24 @@ Expected COLON but got IDENTIFIER ("hello") at line 12
 
 ### Frame stack
 
-The engine maintains a **frame stack** — an array of `{ nodes: Node[], index: number }` objects.
+The engine maintains a **frame stack** — an array of `{ nodes: Node[], index: number, chapterKey: string | null }` objects.
 
 - `nodes` is the list of AST nodes to execute at this level.
 - `index` is the read cursor into that list.
+- `chapterKey` is the canonical `file::CHAPTER` identifier for chapter frames; nested control-flow frames keep it `null`.
 
 When a block body is entered (chapter, `if` branch), a new frame is pushed. When a frame is exhausted, it is popped and execution resumes in the parent frame.
 
 ```
 Initial state (after compile):
-  stack = [{ nodes: program.body, index: 0 }]
+  stack = [{ nodes: program.body, index: 0, chapterKey: null }]
 
 After entering chapter START:
-  stack = [{ nodes: chapter.body, index: 0 }]
+  stack = [{ nodes: chapter.body, index: 0, chapterKey: "__main__::START" }]
 
 After entering if branch:
-  stack = [{ nodes: chapter.body, index: 2 },
-           { nodes: ifBranch.body, index: 0 }]
+  stack = [{ nodes: chapter.body, index: 2, chapterKey: "__main__::START" },
+           { nodes: ifBranch.body, index: 0, chapterKey: null }]
 ```
 
 ### `next()` loop
@@ -179,7 +180,9 @@ This means the caller always receives exactly one visible event per `next()` cal
 
 ### Save / load snapshots
 
-`engine.saveState()` captures the mutable runtime state around the immutable AST: current file, execution frames, saved call frames, variable maps, initialization status, and any pending choice. `engine.loadState(snapshot)` restores that state onto an engine built from the same project.
+`engine.saveState()` captures the mutable runtime state around the immutable AST: current file, execution frames, saved call frames, chapter tracking state, persistent state, variable maps, initialization status, and any pending choice. `engine.loadState(snapshot)` restores that state onto an engine built from the same project.
+
+The engine can also be constructed with a host-owned persistent store via `new Engine(program, { persistent })`. That store is not a dependency of the engine; it is simply a backing map or object the shell can keep across playthroughs.
 
 ### Goto semantics
 
@@ -232,6 +235,8 @@ Errors inside an interpolation expression are caught and silently replaced with 
 ### State
 
 Runtime variables are split into a global map and a local/session map. Global declarations and cross-file globals live in the shared map; ordinary `declare` and `set` operations write to local state unless a variable already exists globally. `engine.getState()` merges both maps for inspection, with local values taking precedence on key collisions.
+
+Persistent state is separate from runtime variables. It is exposed through `engine.getPersistentState()`, `engine.setPersistentState(...)`, and `engine.clearPersistentState()`, and the `persistent(...)` helper in scripts reads and writes the same backing store.
 
 ---
 

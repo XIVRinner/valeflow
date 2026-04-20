@@ -79,6 +79,8 @@ chapter HUB:
 - Execution begins at the **first chapter defined**, or at the top-level body before any chapter.
 - Chapters are pre-registered at parse time, so `goto` can jump forward *or* backward.
 
+The runtime also tracks chapter lifecycle information. Host code can query which chapters were visited or completed, and inspect the currently active chapter through the engine API.
+
 ---
 
 ## Dialogue (Say)
@@ -228,6 +230,17 @@ call setFlag("metQueen", true)
 - If the named function is not registered, the `call` is silently ignored.
 - Register functions with `engine.registerFunction(name, fn)`.
 - `call` is a **statement** — its return value is discarded. Use a [call expression](#call-expression) inside a `declare` or `set` to capture a return value.
+
+ValeFlow also exposes a built-in `persistent(...)` helper for host-backed data that should survive across playthroughs. It is separate from ordinary variables and is intended for shell-level state such as unlocks, seen flags, or profile data.
+
+```
+declare seenIntro = persistent("seenIntro")
+call persistent("seenIntro", true)
+```
+
+- `persistent(key)` reads a persistent value.
+- `persistent(key, value)` stores a value and returns it.
+- The host decides where the persistent store lives and can reuse it across new engine instances.
 
 Example with a reusable subroutine:
 

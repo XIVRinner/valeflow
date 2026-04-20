@@ -56,10 +56,12 @@ The runtime that executes a parsed `Program`.
 ### Constructor
 
 ```ts
-new Engine(program: Program)
+new Engine(program: Program, options?: EngineOptions)
 ```
 
 Accepts the `Program` AST returned by `compile()` or `parse()`. Prepares the execution stack and pre-indexes all chapters for `goto` resolution.
+
+`options.persistent` can be either a plain object or a `Map<string, unknown>`. It gives the outer shell a host-owned store for values that should survive across playthroughs.
 
 ---
 
@@ -155,9 +157,53 @@ console.log(state.hero);  // { name: "Lyra" }
 
 ---
 
+### Persistent state
+
+The runtime has a host-visible persistent store for data that should survive across playthroughs. It is separate from per-run state and is available through both direct engine methods and the `persistent(...)` runtime call.
+
+```ts
+engine.getPersistentState();
+engine.setPersistentState({ seenIntro: true });
+engine.clearPersistentState();
+```
+
+Inside ValeFlow scripts:
+
+```ts
+declare seenIntro = persistent("seenIntro")
+call persistent("seenIntro", true)
+```
+
+`persistent(key)` reads a persistent value. `persistent(key, value)` stores a value and returns it.
+
+The constructor also accepts a shared persistent store so the outer shell can keep the same object across new playthroughs.
+
+---
+
+### Chapter tracking
+
+The runtime records chapter visitation and completion using canonical keys in the form `file::CHAPTER`.
+
+```ts
+engine.getCurrentChapter();
+engine.getVisitedChapters();
+engine.getCompletedChapters();
+engine.hasVisitedChapter("START");
+engine.hasCompletedChapter("shop.fsc::SHOP_MAIN");
+engine.getChapterState();
+```
+
+`getCurrentChapter()` returns the active chapter, or `null` outside a chapter body.
+
+`getVisitedChapters()` and `getCompletedChapters()` return arrays of canonical chapter keys in the order they were recorded.
+
+`hasVisitedChapter(target)` and `hasCompletedChapter(target)` accept the same chapter target syntax as `goto`, including local labels and `file::LABEL` references.
+
+---
+
 ### `engine.saveState(): EngineSnapshot`
 
-Captures the current runtime state, including the active file, execution stack, call stack, variables, initialization flag, and any pending choice.
+Captures the current runtime state, including the active file, execution stack, call stack, chapter tracking state, persistent state, variables, initialization flag, and any pending choice.
 
 ```ts
 const snapshot = engine.saveState();
@@ -172,6 +218,18 @@ engine.loadState(snapshot);
 ```
 
 The snapshot is meant for the same compiled project. If the stored current file does not exist in the target engine's project, loading throws.
+
+---
+
+### `EngineOptions`
+
+```ts
+interface EngineOptions {
+  persistent?: Record<string, unknown> | Map<string, unknown>;
+}
+```
+
+Pass this when creating an engine if you want to share persistent data between runs.
 
 ### Choice handling
 

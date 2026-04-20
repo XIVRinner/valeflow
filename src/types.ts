@@ -269,11 +269,18 @@ export type StepResult =
 export interface EngineFrameSnapshot {
   nodes: Node[];
   index: number;
+  chapterKey?: string | null;
 }
 
 export interface EngineCallFrameSnapshot {
   file: string;
   stack: EngineFrameSnapshot[];
+}
+
+export interface EngineChapterStateSnapshot {
+  current: string | null;
+  visited: string[];
+  completed: string[];
 }
 
 export interface EngineChoiceSnapshot {
@@ -284,11 +291,17 @@ export interface EngineChoiceSnapshot {
 export interface EngineSnapshot {
   currentFile: string;
   stack: EngineFrameSnapshot[];
+  chapterState: EngineChapterStateSnapshot;
+  persistentState: Record<string, unknown>;
   callStack: EngineCallFrameSnapshot[];
   globals: Record<string, unknown>;
   state: Record<string, unknown>;
   initialized: boolean;
   pendingChoice: EngineChoiceSnapshot | null;
+}
+
+export interface EngineOptions {
+  persistent?: Record<string, unknown> | Map<string, unknown>;
 }
 
 export interface RuntimeContext {

@@ -12,11 +12,21 @@ export interface ChoiceOption {
   index: number;
 }
 
+export interface ChapterState {
+  current: string | null;
+  visited: string[];
+  completed: string[];
+}
+
+const PERSISTENT_STORAGE_KEY = 'valeflow-demo:persistent';
+
 @Injectable({ providedIn: 'root' })
 export class ValeflowService {
   // Reactive signals consumed by components
   readonly steps   = signal<DialogueStep[]>([]);
   readonly state   = signal<Record<string, unknown>>({});
+  readonly chapters = signal<ChapterState>({ current: null, visited: [], completed: [] });
+  readonly persistent = signal<Record<string, unknown>>({});
   readonly done    = signal(false);
   readonly logs    = signal<string[]>([]);
   /** Non-null while the engine is waiting for a choice to be resolved. */
@@ -30,10 +40,11 @@ export class ValeflowService {
     this.logs.set([]);
     this.done.set(false);
     this.state.set({});
+    this.chapters.set({ current: null, visited: [], completed: [] });
     this.choice.set(null);
 
     const program = compile(source);
-    this.engine = new Engine(program);
+    this.engine = new Engine(program, { persistent: this.loadPersistent() });
 
     // Register all built-in hooks
     this.engine.registerFunction('Actor', (_ctx, name) => ({ name }));
@@ -86,6 +97,9 @@ export class ValeflowService {
   private refreshState(): void {
     if (this.engine) {
       this.state.set({ ...this.engine.getState() });
+      this.chapters.set({ ...this.engine.getChapterState() });
+      this.persistent.set({ ...this.engine.getPersistentState() });
+      this.savePersistent();
     }
   }
 
@@ -95,8 +109,26 @@ export class ValeflowService {
     this.logs.set([]);
     this.done.set(false);
     this.state.set({});
+    this.chapters.set({ current: null, visited: [], completed: [] });
     this.choice.set(null);
     this.engine = null;
+  }
+
+  private loadPersistent(): Record<string, unknown> {
+    try {
+      const raw = localStorage.getItem(PERSISTENT_STORAGE_KEY);
+      return raw ? JSON.parse(raw) as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private savePersistent(): void {
+    try {
+      localStorage.setItem(PERSISTENT_STORAGE_KEY, JSON.stringify(this.persistent()));
+    } catch {
+      // Ignore storage errors in demo mode.
+    }
   }
 
   private pushLog(msg: string): void {
