@@ -1,0 +1,24 @@
+declare runCount = persistent("demo.runCount")
+declare hasSeenIntro = persistent("demo.hasSeenIntro")
+
+declare totalVisits = 0
+
+chapter START:
+    if runCount == null:
+        set runCount = 0
+    set runCount = runCount + 1
+    call persistent("demo.runCount", runCount)
+
+    if hasSeenIntro == null:
+        "First time here. The outer shell will remember you."
+        call persistent("demo.hasSeenIntro", true)
+    else:
+        "Welcome back. This tab has been opened ${runCount} times."
+
+    set totalVisits = totalVisits + 1
+    choice:
+        "Restart the story" -> START
+        "Finish" -> END
+
+chapter END:
+    "Persistent values survive because the host reuses the same store."
