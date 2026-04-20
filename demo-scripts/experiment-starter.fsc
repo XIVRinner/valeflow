@@ -2,7 +2,7 @@ declare hero = Actor("Hero")
 declare count = 0
 
 chapter START:
-    hero "Hello, FlowScript!"
+    hero "Hello, ValeFlow!"
     set count = count + 1
     hero "Step ${count} — variables work!"
     set count = count + 1
